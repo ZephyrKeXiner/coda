@@ -44,15 +44,17 @@ const toolDefination: OpenAI.Chat.Completions.ChatCompletionTool[] = [{
   }
 }]
 
+const message: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = []
+
 const sandbox = await Sandbox.create({ timeoutMs: 5 * 60 * 1000 })
 
 while(true) {
   const prompt = await ask('> ')
-
-  const message: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [{
-    "role": 'user',
-    "content": prompt,//'用 curl 获取 https://httpbin.org/ip 的返回内容，然后用 echo 把 IP 地址单独打印出来',
-  }]
+  message.push({ role: 'user', content: prompt})
+  // const message: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [{
+  //   "role": 'user',
+  //   "content": prompt,//'用 curl 获取 https://httpbin.org/ip 的返回内容，然后用 echo 把 IP 地址单独打印出来',
+  // }]
 
   while (true) {
     const completion = await openai.chat.completions.create({
