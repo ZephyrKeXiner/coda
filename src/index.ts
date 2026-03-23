@@ -13,6 +13,7 @@ import OpenAI from 'openai';
 import { Sandbox } from 'e2b';
 import * as readline from "readline";
 import { resolve } from "node:dns";
+import { readFile } from "node:fs/promises";
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -26,23 +27,42 @@ const openai = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
 })
 
-const toolDefination: OpenAI.Chat.Completions.ChatCompletionTool[] = [{
-  "type": "function",
-  "function": {
-    "name": "bash",
-    "description": "Run a bash command in a Linux terminal",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "command": {
-          type: "string",
-          description: "Run a bash command"
+const toolDefination: OpenAI.Chat.Completions.ChatCompletionTool[] = [
+  {
+    "type": "function",
+    "function": {
+      "name": "bash",
+      "description": "Run a bash command in a Linux terminal",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "command": {
+            type: "string",
+            description: "Run a bash command"
+          },
         },
-      },
-      required: ["command"]
+        required: ["command"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "read_file",
+      "description": "Read local file content",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            type: "string",
+            description: "The file path when you need to read"
+          },
+        },
+        required: ["path"]
+      }
     }
   }
-}]
+]
 
 const message: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = []
 
@@ -63,26 +83,33 @@ while(true) {
       tools: toolDefination
     })
 
-    console.log(completion)
     console.log(completion.choices[0].message.content)
 
     if (completion.choices[0].finish_reason === 'tool_calls') {
       console.log(JSON.stringify(completion.choices[0].message.tool_calls))
-      message.push({ role: 'assistant', content: completion.choices[0].message.content})
       for (const call of completion.choices[0].message.tool_calls!) {
         if (call.type != "function") continue
+        if (call.function.name == 'bash') {
+          const fn = (call as any).function
+          const args = JSON.parse(fn.arguments)
+          const command = args.command
+          const result = await sandbox.commands.run(command)
 
-        const fn = (call as any).function
-        const args = JSON.parse(fn.arguments)
-        const command = args.command
-        const result = await sandbox.commands.run(command)
-
-        console.log(result.stdout || result.stderr || 'no output')
-        message.push({
-          role: 'tool',
-          tool_call_id: call.id,
-          content: result.stdout || result.stderr || 'no output'
-        })
+          console.log(result.stdout || result.stderr || 'no output')
+          message.push({
+            role: 'tool',
+            tool_call_id: call.id,
+            content: result.stdout || result.stderr || 'no output'
+          })
+        } else if (call.function.name == 'read_file'){
+          const args = JSON.parse(call.function.arguments)
+          const content = await read_file(args)
+          message.push({
+            role: 'tool',
+            tool_call_id: call.id,
+            content: content
+          })
+        }
       }
     } else if (completion.choices[0].finish_reason === 'stop') {
       sandbox.kill()
@@ -90,6 +117,7 @@ while(true) {
     }
   }
 }
+
 function ask(prompt: string): Promise<string> {
   return new Promise(resolve => {
     rl.question(prompt, (answer) => {
@@ -97,6 +125,13 @@ function ask(prompt: string): Promise<string> {
     })
   })
 }
+
+async function read_file(file_path: string) {
+  const data = await readFile(file_path, { encoding: 'utf-8'});
+  console.log(data)
+  return data
+}
+
 // const account = privateKeyToAccount(process.env.EVM_PRIVATE_KEY as `0x{string}`)
 // const publicClient = createPublicClient({ chain: baseSepolia, transport: http()})
 // const signer = toClientEvmSigner(account, publicClient)
