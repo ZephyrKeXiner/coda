@@ -5,12 +5,21 @@ import { ExactEvmScheme, toClientEvmSigner } from "@x402/evm";
 import { privateKeyToAccount } from "viem/accounts";
 import { createPublicClient, http } from "viem";
 import { baseSepolia } from "viem/chains";
-import 'dotenv/config';
+import dotenv from "dotenv";
 import axios from 'axios'
 import { Command, Option } from 'commander';
 import { open, writeSync } from 'node:fs';
 import OpenAI from 'openai';
 import { Sandbox } from 'e2b';
+import * as readline from "readline";
+import { resolve } from "node:dns";
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+})
+
+dotenv.config({ path: ".env.local"})
 
 const openai = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
@@ -35,44 +44,57 @@ const toolDefination: OpenAI.Chat.Completions.ChatCompletionTool[] = [{
   }
 }]
 
-const message: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [{
-  "role": 'user',
-  "content": '用 curl 获取 https://httpbin.org/ip 的返回内容，然后用 echo 把 IP 地址单独打印出来',
-}]
-
 const sandbox = await Sandbox.create({ timeoutMs: 5 * 60 * 1000 })
 
-while (true) {
-  const completion = await openai.chat.completions.create({
-    model: 'qwen/qwen3-235b-a22b-2507',
-    messages: message,
-    tools: toolDefination
-  })
+while(true) {
+  const prompt = await ask('> ')
 
-  if (completion.choices[0].finish_reason === 'tool_calls') {
-    console.log(JSON.stringify(completion.choices[0].message.tool_calls))
-    message.push({ role: 'assistant', content: completion.choices[0].message.content})
-    for (const call of completion.choices[0].message.tool_calls!) {
-      if (call.type != "function") continue
+  const message: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [{
+    "role": 'user',
+    "content": prompt,//'用 curl 获取 https://httpbin.org/ip 的返回内容，然后用 echo 把 IP 地址单独打印出来',
+  }]
 
-      const fn = (call as any).function
-      const args = JSON.parse(fn.arguments)
-      const command = args.command
-      const result = await sandbox.commands.run(command)
+  while (true) {
+    const completion = await openai.chat.completions.create({
+      model: 'qwen/qwen3-235b-a22b-2507',
+      messages: message,
+      tools: toolDefination
+    })
 
-      console.log(result.stdout || result.stderr || 'no output')
-      message.push({
-        role: 'tool',
-        tool_call_id: call.id,
-        content: result.stdout || result.stderr || 'no output'
-      })
+    console.log(completion)
+    console.log(completion.choices[0].message.content)
+
+    if (completion.choices[0].finish_reason === 'tool_calls') {
+      console.log(JSON.stringify(completion.choices[0].message.tool_calls))
+      message.push({ role: 'assistant', content: completion.choices[0].message.content})
+      for (const call of completion.choices[0].message.tool_calls!) {
+        if (call.type != "function") continue
+
+        const fn = (call as any).function
+        const args = JSON.parse(fn.arguments)
+        const command = args.command
+        const result = await sandbox.commands.run(command)
+
+        console.log(result.stdout || result.stderr || 'no output')
+        message.push({
+          role: 'tool',
+          tool_call_id: call.id,
+          content: result.stdout || result.stderr || 'no output'
+        })
+      }
+    } else if (completion.choices[0].finish_reason === 'stop') {
+      sandbox.kill()
+      break
     }
-  } else if (completion.choices[0].finish_reason === 'stop') {
-    sandbox.kill()
-    break
   }
 }
-
+function ask(prompt: string): Promise<string> {
+  return new Promise(resolve => {
+    rl.question(prompt, (answer) => {
+      resolve(answer)
+    })
+  })
+}
 // const account = privateKeyToAccount(process.env.EVM_PRIVATE_KEY as `0x{string}`)
 // const publicClient = createPublicClient({ chain: baseSepolia, transport: http()})
 // const signer = toClientEvmSigner(account, publicClient)
