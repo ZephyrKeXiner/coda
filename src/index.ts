@@ -2,10 +2,8 @@
 import dotenv from "dotenv";
 import OpenAI from 'openai';
 import * as readline from "readline";
-import { readFile } from "node:fs/promises";
 import { execSync } from "node:child_process";
-import { Tracing } from "node:trace_events";
-
+import { Read, Ls } from "../src/tools.js"
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -21,19 +19,36 @@ const openai = new OpenAI({
 
 const toolDefination: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
-    "type": "function",
-    "function": {
-      "name": "read_file",
-      "description": "Read local file content",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "path": {
+    type: "function",
+    function: {
+      name: "read_file",
+      description: "Read local file content",
+      parameters: {
+        type: "object",
+        properties: {
+          path: {
             type: "string",
             description: "The file path when you need to read"
           },
         },
-        required: ["path"]
+        required: [ "path" ]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_dir",
+      description: "List the directory's content",
+      parameters: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            description: "The directory path that you want to know the file in it"
+          },
+        },
+        required: [ "path" ]
       }
     }
   }
@@ -54,7 +69,7 @@ while(true) {
 
   while (true) {
     const completion = await openai.chat.completions.create({
-      model: 'qwen/qwen3-235b-a22b-2507',
+      model: "moonshotai/kimi-k2.5",//"anthropic/claude-opus-4.6",//'qwen/qwen3-235b-a22b-2507'
       messages: message,
       tools: toolDefination
     })
@@ -63,6 +78,7 @@ while(true) {
 
     if (completion.choices[0].finish_reason === 'tool_calls') {
       console.log(JSON.stringify(completion.choices[0].message.tool_calls))
+      message.push(completion.choices[0].message)
       for (const call of completion.choices[0].message.tool_calls!) {
         if (call.type != "function") continue
         if (call.function.name == 'bash') {
@@ -71,11 +87,19 @@ while(true) {
           const command = args.command
         } else if (call.function.name == 'read_file'){
           const args = JSON.parse(call.function.arguments)
-          const content = await read_file(args.path)
+          const fileContent = await Read(args.path)
           message.push({
             role: 'tool',
             tool_call_id: call.id,
-            content: content
+            content: fileContent
+          })
+        } else if (call.function.name == 'list_dir') {
+          const args = JSON.parse(call.function.arguments)
+          const dirContent = Ls(args.path).join(`\n`)
+          message.push({
+            role: 'tool',
+            tool_call_id: call.id,
+            content: dirContent
           })
         }
       }
@@ -91,15 +115,4 @@ function ask(prompt: string): Promise<string> {
       resolve(answer)
     })
   })
-}
-
-async function read_file(file_path: string) {
-  console.log(file_path)
-  const data = await readFile(`${file_path}`, { encoding: 'utf-8'});
-  console.log(data)
-  return data
-}
-
-async function write_file(file_path: string, content: string) {
-  
 }
