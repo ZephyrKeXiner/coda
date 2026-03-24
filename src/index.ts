@@ -68,10 +68,11 @@ while(true) {
   message.push({ role: 'user', content: prompt})
 
   while (true) {
-    const completion = await openai.chat.completions.create({
-      model: "moonshotai/kimi-k2.5",//"anthropic/claude-opus-4.6",//'qwen/qwen3-235b-a22b-2507'
+    const completion = await openai.responses.create({
+      model: "qwen/qwen3-235b-a22b-2507",//"anthropic/claude-opus-4.6",//'qwen/qwen3-235b-a22b-2507'
       messages: message,
-      tools: toolDefination
+      tools: toolDefination,
+      reasoning_effort: 'high'
     })
 
     console.log(completion.choices[0].message.content)
