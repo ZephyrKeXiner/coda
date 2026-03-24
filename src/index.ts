@@ -4,6 +4,7 @@ import OpenAI from 'openai';
 import * as readline from "readline";
 import { execSync } from "node:child_process";
 import { Read, Ls } from "../src/tools.js"
+import { toolDefination } from "./def.js";
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -16,43 +17,6 @@ const openai = new OpenAI({
   baseURL: 'https://openrouter.ai/api/v1',
   apiKey: process.env.OPENROUTER_API_KEY,
 })
-
-const toolDefination: OpenAI.Chat.Completions.ChatCompletionTool[] = [
-  {
-    type: "function",
-    function: {
-      name: "read_file",
-      description: "Read local file content",
-      parameters: {
-        type: "object",
-        properties: {
-          path: {
-            type: "string",
-            description: "The file path when you need to read"
-          },
-        },
-        required: [ "path" ]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "list_dir",
-      description: "List the directory's content",
-      parameters: {
-        type: "object",
-        properties: {
-          path: {
-            type: "string",
-            description: "The directory path that you want to know the file in it"
-          },
-        },
-        required: [ "path" ]
-      }
-    }
-  }
-]
 
 const filetree = execSync(`ls ${process.cwd()}`).toString()
 
@@ -72,7 +36,7 @@ while(true) {
       model: "qwen/qwen3-235b-a22b-2507",//"anthropic/claude-opus-4.6",//'qwen/qwen3-235b-a22b-2507'
       messages: message,
       tools: toolDefination,
-      reasoning_effort: 'high'
+      ...{ extra_body: { thinking: { type: 'enabled', budget_tokens: 4096 } } }
     })
 
     console.log(completion.choices[0].message.content)
