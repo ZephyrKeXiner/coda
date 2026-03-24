@@ -68,7 +68,7 @@ while(true) {
   message.push({ role: 'user', content: prompt})
 
   while (true) {
-    const completion = await openai.responses.create({
+    const completion = await openai.chat.completions.create({
       model: "qwen/qwen3-235b-a22b-2507",//"anthropic/claude-opus-4.6",//'qwen/qwen3-235b-a22b-2507'
       messages: message,
       tools: toolDefination,
