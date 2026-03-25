@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import OpenAI from 'openai';
 import * as readline from "readline";
 import { execSync } from "node:child_process";
-import { Read, Ls, Write } from "../src/tools.js"
+import { Read, Ls, Write, Grep } from "../src/tools.js"
 import { toolDefination } from "./def.js";
 
 const rl = readline.createInterface({
@@ -73,6 +73,14 @@ while(true) {
             role: 'tool',
             tool_call_id: call.id,
             content: ''
+          })
+        } else if(call.function.name == 'grep') {
+          const args = JSON.parse(call.function.arguments)
+          const matchedLines = await Grep(args.file_path, args.keyword)
+          message.push({
+            role: 'tool',
+            tool_call_id: call.id,
+            content: matchedLines
           })
         }
       }

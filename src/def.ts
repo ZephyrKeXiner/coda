@@ -55,5 +55,26 @@ export const toolDefination: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         required: [ "path", "content" ]
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "grep",
+      description: "Search for a keyword in the file content and return the matching lines",
+      parameters: {
+        type: "object",
+        properties: {
+          file_path: {
+            type: "string",
+            description: "The file path in which to search for the keyword"
+          },
+          keyword: {
+            type: "string",
+            description: "The keyword to search for in the file content"
+          }
+        },
+        required: ["file_path", "keyword"]
+      }
+    }
   }
 ]
