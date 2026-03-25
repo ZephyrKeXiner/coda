@@ -6,6 +6,8 @@ import { execSync } from "node:child_process";
 import { Read, Ls, Write, Grep, Edit } from "../src/tools.js"
 import { toolDefination } from "./def.js";
 import { argon2Sync } from "node:crypto";
+import { unwatchFile } from "node:fs";
+import { callbackify } from "node:util";
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -65,19 +67,57 @@ while(true) {
   message.push({ role: 'user', content: prompt})
 
   while (true) {
-    const completion = await openai.chat.completions.create({
+    const stream = await openai.chat.completions.create({
       model: "qwen/qwen3-235b-a22b-2507",//"anthropic/claude-opus-4.6",//'qwen/qwen3-235b-a22b-2507'
       messages: message,
       tools: toolDefination,
-      ...{ extra_body: { thinking: { type: 'enabled', budget_tokens: 4096 } } }
+      ...{ extra_body: { thinking: { type: 'enabled', budget_tokens: 4096 } } },
+      stream: true
     })
 
-    console.log(completion.choices[0].message.content)
+    let fullContext = ''
+    let toolCallUse: any[] = []
+    let finishReason = ''
 
-    if (completion.choices[0].finish_reason === 'tool_calls') {
-      console.log(JSON.stringify(completion.choices[0].message.tool_calls))
-      message.push(completion.choices[0].message)
-      for (const call of completion.choices[0].message.tool_calls!) {
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta
+      if (delta?.content) {
+        process.stdout.write(delta.content)
+        fullContext += delta.content
+      }
+
+      if (delta?.tool_calls) {
+        for (const call of delta.tool_calls) {
+          if (!toolCallUse[call.index]) {
+            toolCallUse[call.index] = {
+              type: call.type,
+              id: call.id,
+              function: { name: '', arguments: '' }
+            }
+          }
+
+          if (call.function?.name) {
+            toolCallUse[call.index].function.name += call.function.name
+          }
+          if (call.function?.arguments) {
+            toolCallUse[call.index].function.arguments += call.function.arguments
+          }
+        }
+      }
+
+      if (chunk.choices[0].finish_reason) {
+        finishReason = chunk.choices[0].finish_reason
+      }
+    }
+
+    if (finishReason === 'tool_calls') {
+      message.push({
+        role: 'assistant',
+        content: fullContext || null,
+        tool_calls: toolCallUse
+      } as any)
+      
+      for (const call of toolCallUse) {
         if (call.type != "function") continue
 
         const handler = toolHandlers[call.function.name];
@@ -93,7 +133,7 @@ while(true) {
           console.warn(`Unknown tool: ${call.function.name}`);
         }
       }
-    } else if (completion.choices[0].finish_reason === 'stop') {
+    } else if (finishReason === 'stop') {
       break
     }
   }
