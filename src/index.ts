@@ -116,7 +116,7 @@ while(true) {
         content: fullContext || null,
         tool_calls: toolCallUse
       } as any)
-      
+
       for (const call of toolCallUse) {
         if (call.type != "function") continue
 
@@ -134,6 +134,8 @@ while(true) {
         }
       }
     } else if (finishReason === 'stop') {
+      process.stdout.write('\n')
+      message.push({ role: 'assistant', content: fullContext })
       break
     }
   }
