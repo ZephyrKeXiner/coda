@@ -20,6 +20,28 @@ const openai = new OpenAI({
 
 const filetree = execSync(`ls ${process.cwd()}`).toString()
 
+// Tool handler map: each tool name maps to an async function that takes parsed args and returns a string result
+const toolHandlers: Record<string, (args: Record<string, any>) => Promise<string>> = {
+  bash: async (args) => {
+    // bash handler: currently a no-op placeholder
+    const _command = args.command;
+    return '';
+  },
+  read_file: async (args) => {
+    return await Read(args.path);
+  },
+  list_dir: async (args) => {
+    return Ls(args.path).join('\n');
+  },
+  write_file: async (args) => {
+    await Write(args.path, args.content);
+    return '';
+  },
+  grep: async (args) => {
+    return await Grep(args.file_path, args.keyword);
+  },
+};
+
 const message: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
   {
     role: 'system',
@@ -54,42 +76,18 @@ while(true) {
       message.push(completion.choices[0].message)
       for (const call of completion.choices[0].message.tool_calls!) {
         if (call.type != "function") continue
-        if (call.function.name == 'bash') {
-          const fn = (call as any).function
-          const args = JSON.parse(fn.arguments)
-          const command = args.command
-        } else if (call.function.name == 'read_file'){
-          const args = JSON.parse(call.function.arguments)
-          const fileContent = await Read(args.path)
+
+        const handler = toolHandlers[call.function.name];
+        if (handler) {
+          const args = JSON.parse(call.function.arguments);
+          const result = await handler(args);
           message.push({
             role: 'tool',
             tool_call_id: call.id,
-            content: fileContent
-          })
-        } else if (call.function.name == 'list_dir') {
-          const args = JSON.parse(call.function.arguments)
-          const dirContent = Ls(args.path).join(`\n`)
-          message.push({
-            role: 'tool',
-            tool_call_id: call.id,
-            content: dirContent
-          })
-        } else if(call.function.name == 'write_file') {
-          const args = JSON.parse(call.function.arguments)
-          Write(args.path, args.content)
-          message.push({
-            role: 'tool',
-            tool_call_id: call.id,
-            content: ''
-          })
-        } else if(call.function.name == 'grep') {
-          const args = JSON.parse(call.function.arguments)
-          const matchedLines = await Grep(args.file_path, args.keyword)
-          message.push({
-            role: 'tool',
-            tool_call_id: call.id,
-            content: matchedLines
-          })
+            content: result,
+          });
+        } else {
+          console.warn(`Unknown tool: ${call.function.name}`);
         }
       }
     } else if (completion.choices[0].finish_reason === 'stop') {
