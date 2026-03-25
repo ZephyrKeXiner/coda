@@ -23,7 +23,15 @@ const filetree = execSync(`ls ${process.cwd()}`).toString()
 const message: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
   {
     role: 'system',
-    content: `You are a coding agent assistance. The file structure: ${filetree}`
+    content: `You are a coding agent assistance. The file structure: ${filetree}.
+    
+    Workflow: 
+    - First, you need to understand user's requirement.
+    - Use the tool 'list_dir' to know the structure of the program
+    - Use the tool 'read_file' to read related files and understand existed code
+    - Thinking the resolution of user's requirement
+    - Use the tool 'write_file to modify related files'
+    - At last, use 'read_file' again to verify the modification`
   }
 ]
 
@@ -33,7 +41,7 @@ while(true) {
 
   while (true) {
     const completion = await openai.chat.completions.create({
-      model: "qwen/qwen3-235b-a22b-2507",//"anthropic/claude-opus-4.6",//'qwen/qwen3-235b-a22b-2507'
+      model: "anthropic/claude-opus-4.6",//"anthropic/claude-opus-4.6",//'qwen/qwen3-235b-a22b-2507'
       messages: message,
       tools: toolDefination,
       ...{ extra_body: { thinking: { type: 'enabled', budget_tokens: 4096 } } }
