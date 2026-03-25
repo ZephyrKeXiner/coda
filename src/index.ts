@@ -3,8 +3,9 @@ import dotenv from "dotenv";
 import OpenAI from 'openai';
 import * as readline from "readline";
 import { execSync } from "node:child_process";
-import { Read, Ls, Write, Grep } from "../src/tools.js"
+import { Read, Ls, Write, Grep, Edit } from "../src/tools.js"
 import { toolDefination } from "./def.js";
+import { argon2Sync } from "node:crypto";
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -20,10 +21,8 @@ const openai = new OpenAI({
 
 const filetree = execSync(`ls ${process.cwd()}`).toString()
 
-// Tool handler map: each tool name maps to an async function that takes parsed args and returns a string result
 const toolHandlers: Record<string, (args: Record<string, any>) => Promise<string>> = {
   bash: async (args) => {
-    // bash handler: currently a no-op placeholder
     const _command = args.command;
     return '';
   },
@@ -40,6 +39,9 @@ const toolHandlers: Record<string, (args: Record<string, any>) => Promise<string
   grep: async (args) => {
     return await Grep(args.file_path, args.keyword);
   },
+  edit_file: async (args) => {
+    return await Edit(args.file_path, args.old_string, args.new_string)
+  }
 };
 
 const message: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
@@ -53,7 +55,8 @@ const message: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     - Use the tool 'read_file' to read related files and understand existed code
     - Thinking the resolution of user's requirement
     - Use the tool 'write_file to modify related files'
-    - At last, use 'read_file' again to verify the modification`
+    - At last, use 'read_file' again to verify the modification
+    - If you can, use the tool 'edit_file more but not 'write_file'`
   }
 ]
 
@@ -63,7 +66,7 @@ while(true) {
 
   while (true) {
     const completion = await openai.chat.completions.create({
-      model: "anthropic/claude-opus-4.6",//"anthropic/claude-opus-4.6",//'qwen/qwen3-235b-a22b-2507'
+      model: "qwen/qwen3-235b-a22b-2507",//"anthropic/claude-opus-4.6",//'qwen/qwen3-235b-a22b-2507'
       messages: message,
       tools: toolDefination,
       ...{ extra_body: { thinking: { type: 'enabled', budget_tokens: 4096 } } }

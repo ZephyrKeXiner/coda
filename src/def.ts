@@ -76,5 +76,30 @@ export const toolDefination: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         required: ["file_path", "keyword"]
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "edit_file",
+      description: "Replace a specific string in a file. The old_string must be unique in the file.",
+      parameters: {
+        type: "object",
+        properties: {
+          file_path: {
+            type: "string",
+            description: "The file path in which to edit the content"
+          },
+          old_string: {
+            type: "string",
+            description: "The exact string to find and replace"
+          },
+          new_string: {
+            type: "string",
+            description: "The replacement string"
+          }
+        },
+        required: [ "file_path", "old_string", "new_string" ]
+      }
+    }
   }
 ]
