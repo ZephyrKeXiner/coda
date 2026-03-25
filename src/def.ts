@@ -34,5 +34,26 @@ export const toolDefination: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         required: [ "path" ]
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "write_file",
+      description: "Write content into file",
+      parameters: {
+        type: "object",
+        properties: {
+          path: {
+            type: "string",
+            description: "The file path that you want to write"
+          },
+          content: {
+            type: "string",
+            description: "The content that you want to write in the file"
+          },
+        },
+        required: [ "path", "content" ]
+      }
+    }
   }
 ]

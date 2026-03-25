@@ -1,4 +1,5 @@
 import { readdirSync } from "fs";
+import { writeFile } from "fs/promises";
 import { readFile } from "fs/promises";
 
 export async function Read(file_path: string) {
@@ -10,6 +11,6 @@ export function Ls(dir_path: string) {
   return readdirSync(dir)
 }
 
-export async function write_file(file_path: string, content: string) {
-
+export async function Write(file_path: string, content: string) {
+  await writeFile(file_path, content, { encoding: 'utf-8' })
 }

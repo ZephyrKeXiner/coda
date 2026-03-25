@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import OpenAI from 'openai';
 import * as readline from "readline";
 import { execSync } from "node:child_process";
-import { Read, Ls } from "../src/tools.js"
+import { Read, Ls, Write } from "../src/tools.js"
 import { toolDefination } from "./def.js";
 
 const rl = readline.createInterface({
@@ -65,6 +65,14 @@ while(true) {
             role: 'tool',
             tool_call_id: call.id,
             content: dirContent
+          })
+        } else if(call.function.name == 'write_file') {
+          const args = JSON.parse(call.function.arguments)
+          Write(args.path, args.content)
+          message.push({
+            role: 'tool',
+            tool_call_id: call.id,
+            content: ''
           })
         }
       }
