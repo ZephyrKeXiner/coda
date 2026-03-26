@@ -1,7 +1,7 @@
 {
   "name": "x402-agent",
   "version": "1.0.1",
-  "description": "",
+  "description": "A CLI-based AI coding agent powered by OpenRouter, with file manipulation and bash execution tools",
   "main": "dist/index.js",
   "bin": {
     "xp-cli": "./bin/xp-cli.sh"
@@ -12,8 +12,12 @@
     "dev:client": "tsx src/index.ts",
     "start": "node dist/index.js"
   },
-  "keywords": [],
+  "keywords": ["ai", "coding-agent", "cli", "openrouter", "llm", "tools"],
   "author": "",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
   "license": "ISC",
   "type": "module",
   "dependencies": {
