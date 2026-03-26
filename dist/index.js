@@ -10,7 +10,6 @@ dotenv.config({ path: ".env.local" });
 const MODEL = process.env.MODEL || "anthropic/claude-opus-4.6";
 const MAX_CONTEXT_MESSAGES = parseInt(process.env.MAX_CONTEXT_MESSAGES || "100", 10);
 const BASH_TIMEOUT = parseInt(process.env.BASH_TIMEOUT || "30000", 10);
-// Dangerous bash commands that require user confirmation
 const DANGEROUS_PATTERNS = [
     /\brm\s+(-[a-zA-Z]*)?.*(-r|-f|--recursive|--force)/,
     /\bmkfs\b/,
@@ -65,9 +64,16 @@ async function confirmDangerous(command) {
     return answer.trim().toLowerCase() === "y";
 }
 function trimMessages(messages) {
-    // Always keep the system message (index 0)
     while (messages.length > MAX_CONTEXT_MESSAGES + 1) {
-        messages.splice(1, 1);
+        let removeEnd = 1;
+        for (let i = 1; i < messages.length; i++) {
+            removeEnd = i + 1;
+            const msg = messages[i];
+            if (msg.role === 'assistant' && !msg.tool_calls) {
+                break;
+            }
+        }
+        messages.splice(1, removeEnd - 1);
     }
 }
 function printUsageStats() {
@@ -140,7 +146,7 @@ If you intend to call multiple tools and there are no dependencies between the c
 function handleSlashCommand(input) {
     const trimmed = input.trim();
     if (trimmed === "/clear") {
-        messages.length = 1; // keep system prompt
+        messages.length = 1;
         console.log(`${colors.success}✓ Conversation cleared.${colors.reset}`);
         return true;
     }
@@ -179,10 +185,8 @@ console.log(`${colors.info}xp-cli coding agent (model: ${MODEL})${colors.reset}`
 console.log(`${colors.info}Type /help for available commands.${colors.reset}\n`);
 while (true) {
     const prompt = await ask(`${colors.prompt}> ${colors.reset}`);
-    // Handle empty input
     if (!prompt.trim())
         continue;
-    // Handle slash commands
     if (prompt.trim().startsWith("/")) {
         if (handleSlashCommand(prompt))
             continue;
@@ -226,7 +230,6 @@ while (true) {
                 if (choice?.finish_reason) {
                     finishReason = choice.finish_reason;
                 }
-                // Track token usage from stream chunks
                 if (chunk.usage) {
                     totalTokensUsed.prompt += chunk.usage.prompt_tokens ?? 0;
                     totalTokensUsed.completion += chunk.usage.completion_tokens ?? 0;
@@ -239,7 +242,6 @@ while (true) {
                     content: fullContext || null,
                     tool_calls: toolCallUse,
                 });
-                // Execute tool calls in parallel (when possible)
                 const toolResults = await Promise.all(toolCallUse
                     .filter((call) => call.type === "function")
                     .map(async (call) => {

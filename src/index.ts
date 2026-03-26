@@ -278,6 +278,8 @@ while (true) {
           tool_calls: toolCallUse,
         } as any);
 
+        if (fullContext) process.stdout.write('\n')
+
         const toolResults = await Promise.all(
           toolCallUse
             .filter((call) => call.type === "function")
