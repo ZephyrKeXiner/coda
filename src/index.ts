@@ -49,7 +49,7 @@ const toolHandlers: Record<string, (args: Record<string, any>) => Promise<string
 const message: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
   {
     role: 'system',
-    content: `You are a coding agent assistance. The file structure: ${filetree}.
+    content: `You are a coding agent assistant. The file structure: ${filetree}.
     
     Workflow: 
     - First, you need to understand user's requirement.
@@ -68,7 +68,7 @@ while(true) {
 
   while (true) {
     const stream = await openai.chat.completions.create({
-      model: "qwen/qwen3-235b-a22b-2507",//"anthropic/claude-opus-4.6",//'qwen/qwen3-235b-a22b-2507'
+      model: "minimax/minimax-m2.7",//"anthropic/claude-opus-4.6",//'qwen/qwen3-235b-a22b-2507',minimax/minimax-m2.7
       messages: message,
       tools: toolDefination,
       ...{ extra_body: { thinking: { type: 'enabled', budget_tokens: 4096 } } },
@@ -119,18 +119,24 @@ while(true) {
 
       for (const call of toolCallUse) {
         if (call.type != "function") continue
+        
+        try {
+          const handler = toolHandlers[call.function.name];
+          if (!handler) throw new Error(`Unknown tool: ${call.function.name}`)
 
-        const handler = toolHandlers[call.function.name];
-        if (handler) {
-          const args = JSON.parse(call.function.arguments);
-          const result = await handler(args);
+          const args = JSON.parse(call.function.arguments)
+          const result = await handler(args)
           message.push({
             role: 'tool',
             tool_call_id: call.id,
             content: result,
-          });
-        } else {
-          console.warn(`Unknown tool: ${call.function.name}`);
+          })
+        } catch (e: any) {
+          message.push({
+            role: 'tool',
+            tool_call_id: call.id,
+            content: `Error: ${e.message}`
+          })
         }
       }
     } else if (finishReason === 'stop') {
