@@ -4,7 +4,7 @@ import OpenAI from "openai";
 import * as readline from "readline";
 import { execSync } from "node:child_process";
 import { Read, Ls, Write, Grep, Edit } from "./tools.js";
-import { toolDefination } from "./def.js";
+import { toolDefinition } from "./def.js";
 
 // ─── Configuration ──────────────────────────────────────────────────
 dotenv.config({ path: ".env.local" });
@@ -225,7 +225,7 @@ while (true) {
       const stream = await openai.chat.completions.create({
         model: MODEL,
         messages: messages,
-        tools: toolDefination,
+        tools: toolDefinition,
         stream: true,
       });
 

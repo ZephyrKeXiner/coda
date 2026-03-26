@@ -8,11 +8,17 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev:server": "tsx src/server.ts",
-    "dev:client": "tsx src/index.ts",
+    "dev": "tsx src/index.ts",
     "start": "node dist/index.js"
   },
-  "keywords": ["ai", "coding-agent", "cli", "openrouter", "llm", "tools"],
+  "keywords": [
+    "ai",
+    "coding-agent",
+    "cli",
+    "openrouter",
+    "llm",
+    "tools"
+  ],
   "author": "",
   "repository": {
     "type": "git",
@@ -21,22 +27,10 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "@x402/axios": "^2.6.0",
-    "@x402/core": "^2.6.0",
-    "@x402/evm": "^2.6.0",
-    "@x402/express": "^2.6.0",
-    "@x402/mcp": "^2.6.0",
-    "@x402/svm": "^2.6.0",
-    "axios": "^1.13.6",
-    "commander": "^14.0.3",
     "dotenv": "^17.3.1",
-    "e2b": "^2.14.1",
-    "express": "^5.2.1",
-    "openai": "^6.32.0",
-    "viem": "^2.47.4"
+    "openai": "^6.32.0"
   },
   "devDependencies": {
-    "@types/express": "^5.0.6",
     "@types/node": "^25.5.0",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
