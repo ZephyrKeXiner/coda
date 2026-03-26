@@ -62,13 +62,20 @@ const message: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
   }
 ]
 
+const colors = {
+  assistant: '\x1b[37m',
+  tool: '\x1b[33m',
+  error: '\x1b[31m',
+  reset: '\x1b[0m',
+}
+
 while(true) {
-  const prompt = await ask('> ')
+  const prompt = await ask('\x1b[36m> \x1b[0m')
   message.push({ role: 'user', content: prompt})
 
   while (true) {
     const stream = await openai.chat.completions.create({
-      model: "minimax/minimax-m2.7",//"anthropic/claude-opus-4.6",//'qwen/qwen3-235b-a22b-2507',minimax/minimax-m2.7
+      model: "qwen/qwen3-235b-a22b-2507",//"anthropic/claude-opus-4.6",//'qwen/qwen3-235b-a22b-2507',minimax/minimax-m2.7
       messages: message,
       tools: toolDefination,
       ...{ extra_body: { thinking: { type: 'enabled', budget_tokens: 4096 } } },
@@ -122,6 +129,7 @@ while(true) {
         
         try {
           const handler = toolHandlers[call.function.name];
+          console.log(`${colors.tool}[tool] Use the ${call.function.name} tool${colors.reset}`)
           if (!handler) throw new Error(`Unknown tool: ${call.function.name}`)
 
           const args = JSON.parse(call.function.arguments)
@@ -132,6 +140,7 @@ while(true) {
             content: result,
           })
         } catch (e: any) {
+          console.log(`${colors.error}${e.message}${colors.reset}`)
           message.push({
             role: 'tool',
             tool_call_id: call.id,
