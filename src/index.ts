@@ -5,9 +5,6 @@ import * as readline from "readline";
 import { execSync } from "node:child_process";
 import { Read, Ls, Write, Grep, Edit } from "../src/tools.js"
 import { toolDefination } from "./def.js";
-import { argon2Sync } from "node:crypto";
-import { unwatchFile } from "node:fs";
-import { callbackify } from "node:util";
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -25,8 +22,12 @@ const filetree = execSync(`ls ${process.cwd()}`).toString()
 
 const toolHandlers: Record<string, (args: Record<string, any>) => Promise<string>> = {
   bash: async (args) => {
-    const _command = args.command;
-    return '';
+    console.log(`${colors.tool}[bash] ${args.command}${colors.reset}`)
+    try {
+      return execSync(args.command, { encoding: 'utf-8', timeout: 30000 })
+    } catch (e: any) {
+      return e.stderr || e.message
+    }
   },
   read_file: async (args) => {
     return await Read(args.path);

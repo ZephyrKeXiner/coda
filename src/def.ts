@@ -101,5 +101,22 @@ export const toolDefination: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         required: [ "file_path", "old_string", "new_string" ]
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "bash",
+      description: "Execute bash command on local enviroment",
+      parameters: {
+        type: "object",
+        properties: {
+          command: {
+            type: "string",
+            description: "The bash command that you want to execute"
+          }
+        },
+        required: [ "command" ]
+      }
+    }
   }
 ]
