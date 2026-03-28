@@ -5,6 +5,7 @@ import * as readline from "readline";
 import { execSync } from "node:child_process";
 import { Read, Ls, Write, Grep, Edit } from "./tools.js";
 import { toolDefinition } from "./def.js";
+import { run } from "node:test";
 
 // ─── Configuration ──────────────────────────────────────────────────
 dotenv.config({ path: ".env.local" });
@@ -142,10 +143,9 @@ const toolHandlers: Record<string, (args: Record<string, any>) => Promise<string
 // ─── Build initial context ──────────────────────────────────────────
 const filetree = execSync(`ls ${process.cwd()}`).toString();
 
-const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-  {
-    role: "system",
-    content: `You are a coding agent assistant. The file structure: ${filetree}.
+const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
+
+const systemPrompt: string = `You are a coding agent assistant. The file structure: ${filetree}.
     
     Workflow: 
     - First, you need to understand user's requirement.
@@ -161,9 +161,7 @@ When making function calls using tools that accept array or object parameters en
 
 Answer the user's request using the relevant tool(s), if they are available. Check that all the required parameters for each tool call are provided or can reasonably be inferred from context. IF there are no relevant tools or there are missing values for required parameters, ask the user to supply these values; otherwise proceed with the tool calls. If the user provides a specific value for a parameter (for example provided in quotes), make sure to use that value EXACTLY. DO NOT make up values for or ask about optional parameters.
 
-If you intend to call multiple tools and there are no dependencies between the calls, make all of the independent calls in the same turn, otherwise you MUST wait for previous calls to finish first to determine the dependent values (do NOT use placeholders or guess missing parameters).`,
-  },
-];
+If you intend to call multiple tools and there are no dependencies between the calls, make all of the independent calls in the same turn, otherwise you MUST wait for previous calls to finish first to determine the dependent values (do NOT use placeholders or guess missing parameters).`
 
 // ─── Slash commands ─────────────────────────────────────────────────
 function handleSlashCommand(input: string): boolean {
@@ -212,10 +210,16 @@ console.log(`${colors.info}Type /help for available commands.${colors.reset}\n`)
 while (true) {
   const prompt = await ask(`${colors.prompt}> ${colors.reset}`);
 
-  if (!prompt.trim()) continue;
+  await runAgent(prompt, systemPrompt)
+}
+
+async function runAgent(prompt: string, systemPrompt: string) {
+  messages.push({ role: 'system', content: systemPrompt})
+
+  if (!prompt.trim()) return;
 
   if (prompt.trim().startsWith("/")) {
-    if (handleSlashCommand(prompt)) continue;
+    if (handleSlashCommand(prompt)) return;
   }
 
   messages.push({ role: "user", content: prompt });

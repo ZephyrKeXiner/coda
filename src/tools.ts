@@ -98,7 +98,6 @@ export async function Edit(filePath: string, oldStr: string, newStr: string): Pr
     if (!content.includes(oldStr)) {
       return `Error: Could not find the specified string in ${filePath}. Make sure the old_string matches exactly (including whitespace and line breaks).`;
     }
-    // Check uniqueness
     const occurrences = content.split(oldStr).length - 1;
     if (occurrences > 1) {
       return `Error: The specified string appears ${occurrences} times in ${filePath}. The old_string must be unique. Please provide a more specific string.`;
@@ -110,4 +109,8 @@ export async function Edit(filePath: string, oldStr: string, newStr: string): Pr
     const duration = (performance.now() - start).toFixed(2);
     console.log(`[Edit] "${filePath}" executed in ${duration}ms`);
   }
+}
+
+export async function SubAgent(taskName: string) {
+  
 }
