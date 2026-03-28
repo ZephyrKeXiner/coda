@@ -118,5 +118,22 @@ export const toolDefinition: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         required: [ "command" ]
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "subagent",
+      description: "Launch an independent sub-agent to handle a subtask. The sub-agent has its own conversation context and access to all tools. Use this when you need to delegate a self-contained task (e.g. research, search, or a focused code change) without polluting the main conversation.",
+      parameters: {
+        type: "object",
+        properties: {
+          prompt: {
+            type: "string",
+            description: "The task description for the sub-agent to complete"
+          }
+        },
+        required: ["prompt"]
+      }
+    }
   }
 ]

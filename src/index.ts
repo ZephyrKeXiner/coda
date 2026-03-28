@@ -5,7 +5,6 @@ import * as readline from "readline";
 import { execSync } from "node:child_process";
 import { Read, Ls, Write, Grep, Edit } from "./tools.js";
 import { toolDefinition } from "./def.js";
-import { run } from "node:test";
 
 // ─── Configuration ──────────────────────────────────────────────────
 dotenv.config({ path: ".env.local" });
@@ -13,6 +12,7 @@ dotenv.config({ path: ".env.local" });
 const MODEL = process.env.MODEL || "anthropic/claude-opus-4.6";
 const MAX_CONTEXT_MESSAGES = parseInt(process.env.MAX_CONTEXT_MESSAGES || "100", 10);
 const BASH_TIMEOUT = parseInt(process.env.BASH_TIMEOUT || "30000", 10);
+const MAX_DEPTH = 3;
 
 const DANGEROUS_PATTERNS = [
   /\brm\s+(-[a-zA-Z]*)?.*(-r|-f|--recursive|--force)/,
@@ -101,8 +101,8 @@ function printUsageStats(): void {
   );
 }
 
-// ─── Tool handlers ──────────────────────────────────────────────────
-const toolHandlers: Record<string, (args: Record<string, any>) => Promise<string>> = {
+// ─── Base tool handlers ─────────────────────────────────────────────
+const baseToolHandlers: Record<string, (args: Record<string, any>) => Promise<string>> = {
   bash: async (args) => {
     const cmd = args.command as string;
     console.log(`${colors.tool}[bash] ${cmd}${colors.reset}`);
@@ -143,11 +143,9 @@ const toolHandlers: Record<string, (args: Record<string, any>) => Promise<string
 // ─── Build initial context ──────────────────────────────────────────
 const filetree = execSync(`ls ${process.cwd()}`).toString();
 
-const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
-
 const systemPrompt: string = `You are a coding agent assistant. The file structure: ${filetree}.
-    
-    Workflow: 
+
+    Workflow:
     - First, you need to understand user's requirement.
     - Use the tool 'list_dir' to know the structure of the program
     - Use the tool 'read_file' to read related files and understand existed code
@@ -163,66 +161,26 @@ Answer the user's request using the relevant tool(s), if they are available. Che
 
 If you intend to call multiple tools and there are no dependencies between the calls, make all of the independent calls in the same turn, otherwise you MUST wait for previous calls to finish first to determine the dependent values (do NOT use placeholders or guess missing parameters).`
 
-// ─── Slash commands ─────────────────────────────────────────────────
-function handleSlashCommand(input: string): boolean {
-  const trimmed = input.trim();
-  if (trimmed === "/clear") {
-    messages.length = 1;
-    console.log(`${colors.success}✓ Conversation cleared.${colors.reset}`);
-    return true;
-  }
-  if (trimmed === "/tokens") {
-    printUsageStats();
-    return true;
-  }
-  if (trimmed === "/model") {
-    console.log(`${colors.info}Current model: ${MODEL}${colors.reset}`);
-    return true;
-  }
-  if (trimmed === "/help") {
-    console.log(`${colors.info}Available commands:
-  /clear   - Clear conversation history
-  /tokens  - Show token usage statistics
-  /model   - Show current model
-  /help    - Show this help message
-  /exit    - Exit the program${colors.reset}`);
-    return true;
-  }
-  if (trimmed === "/exit" || trimmed === "/quit") {
-    printUsageStats();
-    console.log(`${colors.success}Goodbye!${colors.reset}`);
-    process.exit(0);
-  }
-  return false;
-}
-
-// ─── Graceful shutdown ──────────────────────────────────────────────
-process.on("SIGINT", () => {
-  console.log(`\n${colors.info}Interrupted.${colors.reset}`);
-  printUsageStats();
-  process.exit(0);
-});
-
-// ─── Main loop ──────────────────────────────────────────────────────
-console.log(`${colors.info}xp-cli coding agent (model: ${MODEL})${colors.reset}`);
-console.log(`${colors.info}Type /help for available commands.${colors.reset}\n`);
-
-while (true) {
-  const prompt = await ask(`${colors.prompt}> ${colors.reset}`);
-
-  await runAgent(prompt, systemPrompt)
-}
-
-async function runAgent(prompt: string, systemPrompt: string) {
-  messages.push({ role: 'system', content: systemPrompt})
-
-  if (!prompt.trim()) return;
-
-  if (prompt.trim().startsWith("/")) {
-    if (handleSlashCommand(prompt)) return;
-  }
-
-  messages.push({ role: "user", content: prompt });
+// ─── Core agent loop ────────────────────────────────────────────────
+export async function runAgent(
+  messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+  depth: number = 0
+): Promise<string> {
+  // Build tool handlers with subagent at current depth
+  const toolHandlers: Record<string, (args: Record<string, any>) => Promise<string>> = {
+    ...baseToolHandlers,
+    subagent: async (args) => {
+      if (depth + 1 > MAX_DEPTH) {
+        return `Error: max sub-agent depth (${MAX_DEPTH}) exceeded`;
+      }
+      console.log(`${colors.tool}[subagent depth=${depth + 1}] ${(args.prompt as string).slice(0, 80)}...${colors.reset}`);
+      const subMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: args.prompt },
+      ];
+      return await runAgent(subMessages, depth + 1);
+    },
+  };
 
   while (true) {
     try {
@@ -312,29 +270,85 @@ async function runAgent(prompt: string, systemPrompt: string) {
         );
 
         messages.push(...toolResults);
-
-        // Trim context if too long
         trimMessages(messages);
       } else if (finishReason === "stop") {
         process.stdout.write("\n");
         messages.push({ role: "assistant", content: fullContext });
         trimMessages(messages);
-        break;
+        return fullContext;
       } else {
-        // Unexpected finish reason (e.g. "length" — context too long)
         console.log(`\n${colors.error}[warn] Unexpected finish reason: ${finishReason}${colors.reset}`);
         if (fullContext) {
           messages.push({ role: "assistant", content: fullContext });
         }
-        break;
+        return fullContext;
       }
     } catch (e: any) {
       console.error(`${colors.error}[API Error] ${e.message}${colors.reset}`);
-      // Remove the last user message so user can retry
       if (messages[messages.length - 1]?.role === "user") {
         messages.pop();
       }
-      break;
+      return `Error: ${e.message}`;
     }
   }
+}
+
+// ─── Slash commands ─────────────────────────────────────────────────
+function handleSlashCommand(input: string): boolean {
+  const trimmed = input.trim();
+  if (trimmed === "/clear") {
+    messages.length = 1;
+    console.log(`${colors.success}✓ Conversation cleared.${colors.reset}`);
+    return true;
+  }
+  if (trimmed === "/tokens") {
+    printUsageStats();
+    return true;
+  }
+  if (trimmed === "/model") {
+    console.log(`${colors.info}Current model: ${MODEL}${colors.reset}`);
+    return true;
+  }
+  if (trimmed === "/help") {
+    console.log(`${colors.info}Available commands:
+  /clear   - Clear conversation history
+  /tokens  - Show token usage statistics
+  /model   - Show current model
+  /help    - Show this help message
+  /exit    - Exit the program${colors.reset}`);
+    return true;
+  }
+  if (trimmed === "/exit" || trimmed === "/quit") {
+    printUsageStats();
+    console.log(`${colors.success}Goodbye!${colors.reset}`);
+    process.exit(0);
+  }
+  return false;
+}
+
+// ─── Graceful shutdown ──────────────────────────────────────────────
+process.on("SIGINT", () => {
+  console.log(`\n${colors.info}Interrupted.${colors.reset}`);
+  printUsageStats();
+  process.exit(0);
+});
+
+// ─── Main loop ──────────────────────────────────────────────────────
+console.log(`${colors.info}xp-cli coding agent (model: ${MODEL})${colors.reset}`);
+console.log(`${colors.info}Type /help for available commands.${colors.reset}\n`);
+
+const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+  { role: "system", content: systemPrompt },
+];
+
+while (true) {
+  const prompt = await ask(`${colors.prompt}> ${colors.reset}`);
+
+  if (!prompt.trim()) continue;
+  if (prompt.trim().startsWith("/")) {
+    if (handleSlashCommand(prompt)) continue;
+  }
+
+  messages.push({ role: "user", content: prompt });
+  await runAgent(messages, 0);
 }
