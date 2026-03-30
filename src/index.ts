@@ -10,7 +10,7 @@ import { toolDefinition } from "./def.js";
 dotenv.config({ path: ".env.local" });
 
 const MODEL = process.env.MODEL || "anthropic/claude-opus-4.6";
-const MAX_CONTEXT_MESSAGES = parseInt(process.env.MAX_CONTEXT_MESSAGES || "100", 10);
+const MAX_CONTEXT_TOKENS = parseInt(process.env.MAX_CONTEXT_TOKENS || "100000", 10);
 const BASH_TIMEOUT = parseInt(process.env.BASH_TIMEOUT || "30000", 10);
 const MAX_DEPTH = 3;
 
@@ -78,20 +78,47 @@ async function confirmDangerous(command: string): Promise<boolean> {
   return answer.trim().toLowerCase() === "y";
 }
 
-function trimMessages(messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[]): void {
-  while (messages.length > MAX_CONTEXT_MESSAGES + 1) {
-    let removeEnd = 1
+function estimateTokens(message: OpenAI.Chat.Completions.ChatCompletionMessageParam): number {
+  let text = "";
+  if (typeof message.content === "string") {
+    text = message.content;
+  } else if (message.content === null || message.content === undefined) {
+    text = "";
+  }
+  const msg = message as any;
+  if (msg.tool_calls) {
+    text += JSON.stringify(msg.tool_calls);
+  }
+  return Math.ceil(Buffer.byteLength(text, "utf-8") / 3);
+}
 
+function trimMessages(messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[], lastPromptTokens: number): void {
+  if (lastPromptTokens < MAX_CONTEXT_TOKENS * 0.8) return;
+
+  const targetTokens = MAX_CONTEXT_TOKENS * 0.6;
+  let currentTokens = lastPromptTokens;
+
+  while (currentTokens > targetTokens && messages.length > 2) {
+    let removeEnd = 1;
     for (let i = 1; i < messages.length; i++) {
-      removeEnd = i + 1
-      const msg = messages[i] as any
-
-      if (msg.role === 'assistant' && !msg.tool_calls) {
-        break
+      removeEnd = i + 1;
+      const msg = messages[i] as any;
+      if (msg.role === "assistant" && !msg.tool_calls) {
+        break;
       }
     }
 
-    messages.splice(1, removeEnd - 1)
+    let removedTokens = 0;
+    for (let i = 1; i < removeEnd; i++) {
+      removedTokens += estimateTokens(messages[i]);
+    }
+
+    messages.splice(1, removeEnd - 1);
+    currentTokens -= removedTokens;
+  }
+
+  if (lastPromptTokens >= MAX_CONTEXT_TOKENS * 0.8) {
+    console.log(`${colors.info}[context] trimmed: ${lastPromptTokens} → ~${currentTokens} tokens${colors.reset}`);
   }
 }
 
@@ -194,6 +221,7 @@ export async function runAgent(
       let fullContext = "";
       let toolCallUse: any[] = [];
       let finishReason = "";
+      let lastPromptTokens = 0;
 
       for await (const chunk of stream) {
         const choice = chunk.choices[0];
@@ -230,6 +258,7 @@ export async function runAgent(
           totalTokensUsed.prompt += chunk.usage.prompt_tokens ?? 0;
           totalTokensUsed.completion += chunk.usage.completion_tokens ?? 0;
           totalTokensUsed.total += chunk.usage.total_tokens ?? 0;
+          lastPromptTokens = chunk.usage.prompt_tokens ?? lastPromptTokens;
         }
       }
 
@@ -270,11 +299,11 @@ export async function runAgent(
         );
 
         messages.push(...toolResults);
-        trimMessages(messages);
+        trimMessages(messages, lastPromptTokens);
       } else if (finishReason === "stop") {
         process.stdout.write("\n");
         messages.push({ role: "assistant", content: fullContext });
-        trimMessages(messages);
+        trimMessages(messages, lastPromptTokens);
         return fullContext;
       } else {
         console.log(`\n${colors.error}[warn] Unexpected finish reason: ${finishReason}${colors.reset}`);
