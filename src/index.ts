@@ -154,11 +154,11 @@ export async function runAgent(
         return `Error: max sub-agent depth (${MAX_DEPTH}) exceeded`;
       }
       console.log(
-        `${colors.tool}[subagent depth=${depth + 1}] ${(args.prompt as string).slice(0, 80)}...${colors.reset}`,
+        `${colors.tool}[subagent depth=${depth + 1}] \n${(args.systemprompt as string).slice(0, 80)}...\n${(args.prompt as string).slice(0, 80)}...${colors.reset}`,
       );
       const subMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] =
         [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: args.systemPrompt },
           { role: "user", content: args.prompt },
         ];
       return await runAgent(subMessages, depth + 1);

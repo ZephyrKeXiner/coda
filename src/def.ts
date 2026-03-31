@@ -131,12 +131,16 @@ export const toolDefinition: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       parameters: {
         type: "object",
         properties: {
+          systemprompt: {
+            type: "string",
+            description: "The system prompt for the sub-agent to follow",
+          },
           prompt: {
             type: "string",
             description: "The task description for the sub-agent to complete",
           },
         },
-        required: ["prompt"],
+        required: ["systemprompt", "prompt"],
       },
     },
   },
