@@ -5,6 +5,7 @@ import * as readline from "readline";
 import { execSync } from "node:child_process";
 import { Read, Ls, Write, Grep, Edit } from "./tools.js";
 import { toolDefinition } from "./def.js";
+import { isDangerous, estimateTokens, trimMessages } from "./utils.js";
 
 // ─── Configuration ──────────────────────────────────────────────────
 dotenv.config({ path: ".env.local" });
@@ -17,19 +18,7 @@ const MAX_CONTEXT_TOKENS = parseInt(
 const BASH_TIMEOUT = parseInt(process.env.BASH_TIMEOUT || "30000", 10);
 const MAX_DEPTH = 3;
 
-const DANGEROUS_PATTERNS = [
-  /\brm\s+(-[a-zA-Z]*)?.*(-r|-f|--recursive|--force)/,
-  /\bmkfs\b/,
-  /\bdd\b/,
-  /\b>\s*\/dev\/sd/,
-  /\bchmod\s+-R\b.*\//,
-  /\bchown\s+-R\b.*\//,
-  /\bkill\s+-9\b/,
-  /\bshutdown\b/,
-  /\breboot\b/,
-  /\bcurl\b.*\|\s*(ba)?sh/,
-  /\bwget\b.*\|\s*(ba)?sh/,
-];
+// DANGEROUS_PATTERNS and isDangerous imported from utils.ts
 
 // ─── Readline / Colors ─────────────────────────────────────────────
 const rl = readline.createInterface({
@@ -72,10 +61,6 @@ function ask(prompt: string): Promise<string> {
   });
 }
 
-function isDangerous(command: string): boolean {
-  return DANGEROUS_PATTERNS.some((pattern) => pattern.test(command));
-}
-
 async function confirmDangerous(command: string): Promise<boolean> {
   const answer = await ask(
     `${colors.error}⚠ Dangerous command detected: ${command}\nDo you want to proceed? (y/N): ${colors.reset}`,
@@ -83,56 +68,7 @@ async function confirmDangerous(command: string): Promise<boolean> {
   return answer.trim().toLowerCase() === "y";
 }
 
-function estimateTokens(
-  message: OpenAI.Chat.Completions.ChatCompletionMessageParam,
-): number {
-  let text = "";
-  if (typeof message.content === "string") {
-    text = message.content;
-  } else if (message.content === null || message.content === undefined) {
-    text = "";
-  }
-  const msg = message as any;
-  if (msg.tool_calls) {
-    text += JSON.stringify(msg.tool_calls);
-  }
-  return Math.ceil(Buffer.byteLength(text, "utf-8") / 3);
-}
-
-function trimMessages(
-  messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
-  lastPromptTokens: number,
-): void {
-  if (lastPromptTokens < MAX_CONTEXT_TOKENS * 0.8) return;
-
-  const targetTokens = MAX_CONTEXT_TOKENS * 0.6;
-  let currentTokens = lastPromptTokens;
-
-  while (currentTokens > targetTokens && messages.length > 2) {
-    let removeEnd = 1;
-    for (let i = 1; i < messages.length; i++) {
-      removeEnd = i + 1;
-      const msg = messages[i] as any;
-      if (msg.role === "assistant" && !msg.tool_calls) {
-        break;
-      }
-    }
-
-    let removedTokens = 0;
-    for (let i = 1; i < removeEnd; i++) {
-      removedTokens += estimateTokens(messages[i]);
-    }
-
-    messages.splice(1, removeEnd - 1);
-    currentTokens -= removedTokens;
-  }
-
-  if (lastPromptTokens >= MAX_CONTEXT_TOKENS * 0.8) {
-    console.log(
-      `${colors.info}[context] trimmed: ${lastPromptTokens} → ~${currentTokens} tokens${colors.reset}`,
-    );
-  }
-}
+// estimateTokens and trimMessages imported from utils.ts
 
 function printUsageStats(): void {
   console.log(
@@ -325,11 +261,11 @@ export async function runAgent(
         );
 
         messages.push(...toolResults);
-        trimMessages(messages, lastPromptTokens);
+        trimMessages(messages, lastPromptTokens, MAX_CONTEXT_TOKENS);
       } else if (finishReason === "stop") {
         process.stdout.write("\n");
         messages.push({ role: "assistant", content: fullContext });
-        trimMessages(messages, lastPromptTokens);
+        trimMessages(messages, lastPromptTokens, MAX_CONTEXT_TOKENS);
         return fullContext;
       } else {
         console.log(
