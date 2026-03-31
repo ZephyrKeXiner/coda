@@ -10,7 +10,10 @@ import { toolDefinition } from "./def.js";
 dotenv.config({ path: ".env.local" });
 
 const MODEL = process.env.MODEL || "anthropic/claude-opus-4.6";
-const MAX_CONTEXT_TOKENS = parseInt(process.env.MAX_CONTEXT_TOKENS || "100000", 10);
+const MAX_CONTEXT_TOKENS = parseInt(
+  process.env.MAX_CONTEXT_TOKENS || "100000",
+  10,
+);
 const BASH_TIMEOUT = parseInt(process.env.BASH_TIMEOUT || "30000", 10);
 const MAX_DEPTH = 3;
 
@@ -46,7 +49,9 @@ const colors = {
 
 // ─── OpenAI client ──────────────────────────────────────────────────
 if (!process.env.OPENROUTER_API_KEY) {
-  console.error(`${colors.error}Error: OPENROUTER_API_KEY is not set. Create a .env.local file with your key.${colors.reset}`);
+  console.error(
+    `${colors.error}Error: OPENROUTER_API_KEY is not set. Create a .env.local file with your key.${colors.reset}`,
+  );
   process.exit(1);
 }
 
@@ -73,12 +78,14 @@ function isDangerous(command: string): boolean {
 
 async function confirmDangerous(command: string): Promise<boolean> {
   const answer = await ask(
-    `${colors.error}⚠ Dangerous command detected: ${command}\nDo you want to proceed? (y/N): ${colors.reset}`
+    `${colors.error}⚠ Dangerous command detected: ${command}\nDo you want to proceed? (y/N): ${colors.reset}`,
   );
   return answer.trim().toLowerCase() === "y";
 }
 
-function estimateTokens(message: OpenAI.Chat.Completions.ChatCompletionMessageParam): number {
+function estimateTokens(
+  message: OpenAI.Chat.Completions.ChatCompletionMessageParam,
+): number {
   let text = "";
   if (typeof message.content === "string") {
     text = message.content;
@@ -92,7 +99,10 @@ function estimateTokens(message: OpenAI.Chat.Completions.ChatCompletionMessagePa
   return Math.ceil(Buffer.byteLength(text, "utf-8") / 3);
 }
 
-function trimMessages(messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[], lastPromptTokens: number): void {
+function trimMessages(
+  messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+  lastPromptTokens: number,
+): void {
   if (lastPromptTokens < MAX_CONTEXT_TOKENS * 0.8) return;
 
   const targetTokens = MAX_CONTEXT_TOKENS * 0.6;
@@ -118,18 +128,23 @@ function trimMessages(messages: OpenAI.Chat.Completions.ChatCompletionMessagePar
   }
 
   if (lastPromptTokens >= MAX_CONTEXT_TOKENS * 0.8) {
-    console.log(`${colors.info}[context] trimmed: ${lastPromptTokens} → ~${currentTokens} tokens${colors.reset}`);
+    console.log(
+      `${colors.info}[context] trimmed: ${lastPromptTokens} → ~${currentTokens} tokens${colors.reset}`,
+    );
   }
 }
 
 function printUsageStats(): void {
   console.log(
-    `${colors.info}[tokens] prompt: ${totalTokensUsed.prompt} | completion: ${totalTokensUsed.completion} | total: ${totalTokensUsed.total}${colors.reset}`
+    `${colors.info}[tokens] prompt: ${totalTokensUsed.prompt} | completion: ${totalTokensUsed.completion} | total: ${totalTokensUsed.total}${colors.reset}`,
   );
 }
 
 // ─── Base tool handlers ─────────────────────────────────────────────
-const baseToolHandlers: Record<string, (args: Record<string, any>) => Promise<string>> = {
+const baseToolHandlers: Record<
+  string,
+  (args: Record<string, any>) => Promise<string>
+> = {
   bash: async (args) => {
     const cmd = args.command as string;
     console.log(`${colors.tool}[bash] ${cmd}${colors.reset}`);
@@ -186,25 +201,30 @@ When making function calls using tools that accept array or object parameters en
 
 Answer the user's request using the relevant tool(s), if they are available. Check that all the required parameters for each tool call are provided or can reasonably be inferred from context. IF there are no relevant tools or there are missing values for required parameters, ask the user to supply these values; otherwise proceed with the tool calls. If the user provides a specific value for a parameter (for example provided in quotes), make sure to use that value EXACTLY. DO NOT make up values for or ask about optional parameters.
 
-If you intend to call multiple tools and there are no dependencies between the calls, make all of the independent calls in the same turn, otherwise you MUST wait for previous calls to finish first to determine the dependent values (do NOT use placeholders or guess missing parameters).`
+If you intend to call multiple tools and there are no dependencies between the calls, make all of the independent calls in the same turn, otherwise you MUST wait for previous calls to finish first to determine the dependent values (do NOT use placeholders or guess missing parameters).`;
 
 // ─── Core agent loop ────────────────────────────────────────────────
 export async function runAgent(
   messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
-  depth: number = 0
+  depth: number = 0,
 ): Promise<string> {
-  // Build tool handlers with subagent at current depth
-  const toolHandlers: Record<string, (args: Record<string, any>) => Promise<string>> = {
+  const toolHandlers: Record<
+    string,
+    (args: Record<string, any>) => Promise<string>
+  > = {
     ...baseToolHandlers,
     subagent: async (args) => {
       if (depth + 1 > MAX_DEPTH) {
         return `Error: max sub-agent depth (${MAX_DEPTH}) exceeded`;
       }
-      console.log(`${colors.tool}[subagent depth=${depth + 1}] ${(args.prompt as string).slice(0, 80)}...${colors.reset}`);
-      const subMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: args.prompt },
-      ];
+      console.log(
+        `${colors.tool}[subagent depth=${depth + 1}] ${(args.prompt as string).slice(0, 80)}...${colors.reset}`,
+      );
+      const subMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] =
+        [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: args.prompt },
+        ];
       return await runAgent(subMessages, depth + 1);
     },
   };
@@ -245,7 +265,8 @@ export async function runAgent(
               toolCallUse[call.index].function.name += call.function.name;
             }
             if (call.function?.arguments) {
-              toolCallUse[call.index].function.arguments += call.function.arguments;
+              toolCallUse[call.index].function.arguments +=
+                call.function.arguments;
             }
           }
         }
@@ -269,7 +290,7 @@ export async function runAgent(
           tool_calls: toolCallUse,
         } as any);
 
-        if (fullContext) process.stdout.write('\n')
+        if (fullContext) process.stdout.write("\n");
 
         const toolResults = await Promise.all(
           toolCallUse
@@ -277,8 +298,11 @@ export async function runAgent(
             .map(async (call) => {
               try {
                 const handler = toolHandlers[call.function.name];
-                console.log(`${colors.tool}[tool] ${call.function.name}${colors.reset}`);
-                if (!handler) throw new Error(`Unknown tool: ${call.function.name}`);
+                console.log(
+                  `${colors.tool}[tool] ${call.function.name}${colors.reset}`,
+                );
+                if (!handler)
+                  throw new Error(`Unknown tool: ${call.function.name}`);
 
                 const args = JSON.parse(call.function.arguments);
                 const result = await handler(args);
@@ -288,14 +312,16 @@ export async function runAgent(
                   content: result || "(empty result)",
                 };
               } catch (e: any) {
-                console.log(`${colors.error}[error] ${e.message}${colors.reset}`);
+                console.log(
+                  `${colors.error}[error] ${e.message}${colors.reset}`,
+                );
                 return {
                   role: "tool" as const,
                   tool_call_id: call.id,
                   content: `Error: ${e.message}`,
                 };
               }
-            })
+            }),
         );
 
         messages.push(...toolResults);
@@ -306,7 +332,9 @@ export async function runAgent(
         trimMessages(messages, lastPromptTokens);
         return fullContext;
       } else {
-        console.log(`\n${colors.error}[warn] Unexpected finish reason: ${finishReason}${colors.reset}`);
+        console.log(
+          `\n${colors.error}[warn] Unexpected finish reason: ${finishReason}${colors.reset}`,
+        );
         if (fullContext) {
           messages.push({ role: "assistant", content: fullContext });
         }
@@ -363,8 +391,12 @@ process.on("SIGINT", () => {
 });
 
 // ─── Main loop ──────────────────────────────────────────────────────
-console.log(`${colors.info}xp-cli coding agent (model: ${MODEL})${colors.reset}`);
-console.log(`${colors.info}Type /help for available commands.${colors.reset}\n`);
+console.log(
+  `${colors.info}xp-cli coding agent (model: ${MODEL})${colors.reset}`,
+);
+console.log(
+  `${colors.info}Type /help for available commands.${colors.reset}\n`,
+);
 
 const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
   { role: "system", content: systemPrompt },
