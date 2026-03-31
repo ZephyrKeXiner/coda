@@ -17,7 +17,7 @@ A CLI-based AI coding agent powered by [OpenRouter](https://openrouter.ai/). It 
 ```bash
 # Clone the repo
 git clone <your-repo-url>
-cd x402-agent
+cd coda
 
 # Install dependencies
 npm install
