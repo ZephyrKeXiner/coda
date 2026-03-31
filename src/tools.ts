@@ -7,7 +7,7 @@ import { performance } from "perf_hooks";
  * Resolve and validate a file path, ensuring it stays within the project root.
  * Prevents path traversal attacks.
  */
-function safePath(filePath: string): string {
+export function safePath(filePath: string): string {
   const start = performance.now();
   try {
     const resolved = path.resolve(process.cwd(), filePath);
