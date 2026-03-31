@@ -1,5 +1,5 @@
 {
-  "name": "x402-agent",
+  "name": "coda",
   "version": "1.0.1",
   "description": "A CLI-based AI coding agent powered by OpenRouter, with file manipulation and bash execution tools",
   "main": "dist/index.js",
