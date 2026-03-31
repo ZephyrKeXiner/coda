@@ -12,7 +12,9 @@ export function safePath(filePath: string): string {
   try {
     const resolved = path.resolve(process.cwd(), filePath);
     if (!resolved.startsWith(process.cwd())) {
-      throw new Error(`Access denied: path "${filePath}" is outside the project directory.`);
+      throw new Error(
+        `Access denied: path "${filePath}" is outside the project directory.`,
+      );
     }
     return resolved;
   } finally {
@@ -29,7 +31,9 @@ export async function Read(filePath: string): Promise<string> {
       throw new Error(`File not found: ${filePath}`);
     }
     if (statSync(resolved).isDirectory()) {
-      throw new Error(`"${filePath}" is a directory, not a file. Use list_dir instead.`);
+      throw new Error(
+        `"${filePath}" is a directory, not a file. Use list_dir instead.`,
+      );
     }
     return await readFile(resolved, { encoding: "utf-8" });
   } finally {
@@ -87,11 +91,17 @@ export async function Grep(filePath: string, keyword: string): Promise<string> {
     return matchedLines.join("\n");
   } finally {
     const duration = (performance.now() - start).toFixed(2);
-    console.log(`[Grep] "${keyword}" in "${filePath}" executed in ${duration}ms`);
+    console.log(
+      `[Grep] "${keyword}" in "${filePath}" executed in ${duration}ms`,
+    );
   }
 }
 
-export async function Edit(filePath: string, oldStr: string, newStr: string): Promise<string> {
+export async function Edit(
+  filePath: string,
+  oldStr: string,
+  newStr: string,
+): Promise<string> {
   const start = performance.now();
   try {
     const content = await Read(filePath);
@@ -110,4 +120,3 @@ export async function Edit(filePath: string, oldStr: string, newStr: string): Pr
     console.log(`[Edit] "${filePath}" executed in ${duration}ms`);
   }
 }
-

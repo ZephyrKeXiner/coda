@@ -1,4 +1,4 @@
-import OpenAI from "openai"
+import OpenAI from "openai";
 
 export const toolDefinition: OpenAI.Chat.Completions.ChatCompletionTool[] = [
   {
@@ -11,12 +11,12 @@ export const toolDefinition: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         properties: {
           path: {
             type: "string",
-            description: "The file path when you need to read"
+            description: "The file path when you need to read",
           },
         },
-        required: [ "path" ]
-      }
-    }
+        required: ["path"],
+      },
+    },
   },
   {
     type: "function",
@@ -28,12 +28,13 @@ export const toolDefinition: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         properties: {
           path: {
             type: "string",
-            description: "The directory path that you want to know the file in it"
+            description:
+              "The directory path that you want to know the file in it",
           },
         },
-        required: [ "path" ]
-      }
-    }
+        required: ["path"],
+      },
+    },
   },
   {
     type: "function",
@@ -45,62 +46,64 @@ export const toolDefinition: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         properties: {
           path: {
             type: "string",
-            description: "The file path that you want to write"
+            description: "The file path that you want to write",
           },
           content: {
             type: "string",
-            description: "The content that you want to write in the file"
+            description: "The content that you want to write in the file",
           },
         },
-        required: [ "path", "content" ]
-      }
-    }
+        required: ["path", "content"],
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "grep",
-      description: "Search for a keyword in the file content and return the matching lines",
+      description:
+        "Search for a keyword in the file content and return the matching lines",
       parameters: {
         type: "object",
         properties: {
           file_path: {
             type: "string",
-            description: "The file path in which to search for the keyword"
+            description: "The file path in which to search for the keyword",
           },
           keyword: {
             type: "string",
-            description: "The keyword to search for in the file content"
-          }
+            description: "The keyword to search for in the file content",
+          },
         },
-        required: ["file_path", "keyword"]
-      }
-    }
+        required: ["file_path", "keyword"],
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "edit_file",
-      description: "Replace a specific string in a file. The old_string must be unique in the file.",
+      description:
+        "Replace a specific string in a file. The old_string must be unique in the file.",
       parameters: {
         type: "object",
         properties: {
           file_path: {
             type: "string",
-            description: "The file path in which to edit the content"
+            description: "The file path in which to edit the content",
           },
           old_string: {
             type: "string",
-            description: "The exact string to find and replace"
+            description: "The exact string to find and replace",
           },
           new_string: {
             type: "string",
-            description: "The replacement string"
-          }
+            description: "The replacement string",
+          },
         },
-        required: [ "file_path", "old_string", "new_string" ]
-      }
-    }
+        required: ["file_path", "old_string", "new_string"],
+      },
+    },
   },
   {
     type: "function",
@@ -112,28 +115,29 @@ export const toolDefinition: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         properties: {
           command: {
             type: "string",
-            description: "The bash command that you want to execute"
-          }
+            description: "The bash command that you want to execute",
+          },
         },
-        required: [ "command" ]
-      }
-    }
+        required: ["command"],
+      },
+    },
   },
   {
     type: "function",
     function: {
       name: "subagent",
-      description: "Launch an independent sub-agent to handle a subtask. The sub-agent has its own conversation context and access to all tools. Use this when you need to delegate a self-contained task (e.g. research, search, or a focused code change) without polluting the main conversation.",
+      description:
+        "Launch an independent sub-agent to handle a subtask. The sub-agent has its own conversation context and access to all tools. Use this when you need to delegate a self-contained task (e.g. research, search, or a focused code change) without polluting the main conversation.",
       parameters: {
         type: "object",
         properties: {
           prompt: {
             type: "string",
-            description: "The task description for the sub-agent to complete"
-          }
+            description: "The task description for the sub-agent to complete",
+          },
         },
-        required: ["prompt"]
-      }
-    }
-  }
-]
+        required: ["prompt"],
+      },
+    },
+  },
+];
