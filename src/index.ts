@@ -6,6 +6,7 @@ import { execSync } from "node:child_process";
 import { Read, Ls, Write, Grep, Edit } from "./tools.js";
 import { toolDefinition } from "./def.js";
 import { isDangerous, estimateTokens, trimMessages } from "./utils.js";
+import { loadMessages, saveMessages } from "./memory.js";
 
 // ─── Configuration ──────────────────────────────────────────────────
 dotenv.config({ path: ".env.local" });
@@ -321,6 +322,7 @@ function handleSlashCommand(input: string): boolean {
 
 // ─── Graceful shutdown ──────────────────────────────────────────────
 process.on("SIGINT", () => {
+  saveMessages(messages);
   console.log(`\n${colors.info}Interrupted.${colors.reset}`);
   printUsageStats();
   process.exit(0);
@@ -334,9 +336,8 @@ console.log(
   `${colors.info}Type /help for available commands.${colors.reset}\n`,
 );
 
-const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-  { role: "system", content: systemPrompt },
-];
+const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] =
+  await loadMessages();
 
 while (true) {
   const prompt = await ask(`${colors.prompt}> ${colors.reset}`);

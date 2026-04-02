@@ -1,6 +1,19 @@
 import { LocalIndex, TextSplitter } from "vectra";
 import path from "node:path";
 import OpenAI from "openai";
+import { readFile, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+
+const MEMORY_FILE = "../memory.json";
+
+export async function saveMessages(messages: any[]) {
+  writeFile(MEMORY_FILE, JSON.stringify(messages, null, 2));
+}
+
+export async function loadMessages() {
+  if (!existsSync(MEMORY_FILE)) return [];
+  return JSON.parse(await readFile(MEMORY_FILE, "utf-8"));
+}
 
 export async function saveIndex(prompt: string) {
   const textSplitter = new TextSplitter({ chunkSize: 400, chunkOverlap: 50 });
