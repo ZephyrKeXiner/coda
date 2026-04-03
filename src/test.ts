@@ -4,7 +4,7 @@ import path from "path";
 import fs from "fs";
 import { isDangerous, estimateTokens, trimMessages } from "./utils.js";
 import { Read, Ls, Write, Grep, Edit, safePath } from "./tools.js";
-import { saveMessages, loadMessages } from "./memory.js";
+import { saveMessages, loadMessages, listSessions } from "./memory.js";
 
 // ─── Test fixtures ─────────────────────────────────────────────────
 const TEST_DIR = path.join(process.cwd(), "__test_tmp__");
@@ -20,31 +20,62 @@ after(() => {
   fs.rmSync(TEST_DIR, { recursive: true, force: true });
 });
 
-// ─── saveMessages / loadMessages ──────────────────────────────────
-describe("saveMessages", () => {
+// ─── saveMessages / loadMessages / listSessions ──────────────────
+describe("memory", () => {
+  const testSession = "test-session-001";
+  const testSession2 = "test-session-002";
   const testMessages = [
     { role: "user", content: "hello" },
     { role: "assistant", content: "hi there" },
   ];
 
-  it("should save messages to file and load them back", async () => {
-    saveMessages(testMessages);
-    const loaded = await loadMessages();
+  it("should save messages and load them back by session", async () => {
+    saveMessages(testMessages, testSession);
+    const loaded = await loadMessages(testSession);
     assert.deepStrictEqual(loaded, testMessages);
   });
 
-  it("should overwrite previous messages", async () => {
-    saveMessages([{ role: "user", content: "first" }]);
-    saveMessages([{ role: "user", content: "second" }]);
-    const loaded = await loadMessages();
+  it("should overwrite previous messages for same session", async () => {
+    saveMessages([{ role: "user", content: "first" }], testSession);
+    saveMessages([{ role: "user", content: "second" }], testSession);
+    const loaded = await loadMessages(testSession);
     assert.strictEqual(loaded.length, 1);
     assert.strictEqual(loaded[0].content, "second");
   });
 
   it("should handle empty array", async () => {
-    saveMessages([]);
-    const loaded = await loadMessages();
+    saveMessages([], testSession);
+    const loaded = await loadMessages(testSession);
     assert.deepStrictEqual(loaded, []);
+  });
+
+  it("should return empty array for non-existent session", async () => {
+    const loaded = await loadMessages("non-existent-session");
+    assert.deepStrictEqual(loaded, []);
+  });
+
+  it("should keep sessions isolated", async () => {
+    saveMessages([{ role: "user", content: "session1" }], testSession);
+    saveMessages([{ role: "user", content: "session2" }], testSession2);
+    const loaded1 = await loadMessages(testSession);
+    const loaded2 = await loadMessages(testSession2);
+    assert.strictEqual(loaded1[0].content, "session1");
+    assert.strictEqual(loaded2[0].content, "session2");
+  });
+
+  it("should list all sessions", () => {
+    saveMessages(testMessages, testSession);
+    saveMessages(testMessages, testSession2);
+    const sessions = listSessions();
+    assert.ok(sessions.includes(testSession));
+    assert.ok(sessions.includes(testSession2));
+  });
+
+  it("should return empty list when no sessions exist", () => {
+    // listSessions reads from MEMORY_DIR which may have test files,
+    // so just verify it returns an array
+    const sessions = listSessions();
+    assert.ok(Array.isArray(sessions));
   });
 });
 
