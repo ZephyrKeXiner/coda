@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs";
 import { isDangerous, estimateTokens, trimMessages } from "./utils.js";
 import { Read, Ls, Write, Grep, Edit, safePath } from "./tools.js";
+import { saveMessages, loadMessages } from "./memory.js";
 
 // ─── Test fixtures ─────────────────────────────────────────────────
 const TEST_DIR = path.join(process.cwd(), "__test_tmp__");
@@ -17,6 +18,34 @@ before(() => {
 
 after(() => {
   fs.rmSync(TEST_DIR, { recursive: true, force: true });
+});
+
+// ─── saveMessages / loadMessages ──────────────────────────────────
+describe("saveMessages", () => {
+  const testMessages = [
+    { role: "user", content: "hello" },
+    { role: "assistant", content: "hi there" },
+  ];
+
+  it("should save messages to file and load them back", async () => {
+    saveMessages(testMessages);
+    const loaded = await loadMessages();
+    assert.deepStrictEqual(loaded, testMessages);
+  });
+
+  it("should overwrite previous messages", async () => {
+    saveMessages([{ role: "user", content: "first" }]);
+    saveMessages([{ role: "user", content: "second" }]);
+    const loaded = await loadMessages();
+    assert.strictEqual(loaded.length, 1);
+    assert.strictEqual(loaded[0].content, "second");
+  });
+
+  it("should handle empty array", async () => {
+    saveMessages([]);
+    const loaded = await loadMessages();
+    assert.deepStrictEqual(loaded, []);
+  });
 });
 
 // ─── isDangerous ───────────────────────────────────────────────────

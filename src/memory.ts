@@ -1,13 +1,13 @@
 import { LocalIndex, TextSplitter } from "vectra";
 import path from "node:path";
 import OpenAI from "openai";
-import { readFile, writeFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { existsSync, writeFileSync } from "node:fs";
 
-const MEMORY_FILE = "../memory.json";
+const MEMORY_FILE = new URL("../memory.json", import.meta.url).pathname;
 
-export async function saveMessages(messages: any[]) {
-  writeFile(MEMORY_FILE, JSON.stringify(messages, null, 2));
+export function saveMessages(messages: any[]) {
+  writeFileSync(MEMORY_FILE, JSON.stringify(messages, null, 2));
 }
 
 export async function loadMessages() {

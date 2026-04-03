@@ -321,12 +321,16 @@ function handleSlashCommand(input: string): boolean {
 }
 
 // ─── Graceful shutdown ──────────────────────────────────────────────
-process.on("SIGINT", () => {
+function gracefulShutdown() {
   saveMessages(messages);
   console.log(`\n${colors.info}Interrupted.${colors.reset}`);
   printUsageStats();
   process.exit(0);
-});
+}
+
+process.on("SIGINT", gracefulShutdown);
+rl.on("close", gracefulShutdown);
+rl.on("SIGINT", gracefulShutdown);
 
 // ─── Main loop ──────────────────────────────────────────────────────
 console.log(
