@@ -2,17 +2,29 @@ import { LocalIndex, TextSplitter } from "vectra";
 import path from "node:path";
 import OpenAI from "openai";
 import { readFile } from "node:fs/promises";
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 
-const MEMORY_FILE = new URL("../memory.json", import.meta.url).pathname;
+const MEMORY_DIR = new URL("../memory/", import.meta.url).pathname;
 
-export function saveMessages(messages: any[]) {
-  writeFileSync(MEMORY_FILE, JSON.stringify(messages, null, 2));
+export function saveMessages(messages: any[], session: string) {
+  mkdirSync(MEMORY_DIR, { recursive: true });
+  writeFileSync(
+    path.join(MEMORY_DIR, `${session}.json`),
+    JSON.stringify(messages, null, 2),
+  );
 }
 
-export async function loadMessages() {
-  if (!existsSync(MEMORY_FILE)) return [];
-  return JSON.parse(await readFile(MEMORY_FILE, "utf-8"));
+export async function loadMessages(session: string) {
+  const filePath = path.join(MEMORY_DIR, `${session}.json`);
+  if (!existsSync(filePath)) return [];
+  return JSON.parse(await readFile(filePath, "utf-8"));
+}
+
+export function listSessions(): string[] {
+  if (!existsSync(MEMORY_DIR)) return [];
+  return readdirSync(MEMORY_DIR)
+    .filter((f) => f.endsWith(".json"))
+    .map((f) => f.replace(".json", ""));
 }
 
 export async function saveIndex(prompt: string) {

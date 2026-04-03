@@ -1,10 +1,10 @@
 {
   "name": "coda",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A CLI-based AI coding agent powered by OpenRouter, with file manipulation and bash execution tools",
   "main": "dist/index.js",
   "bin": {
-    "xp-cli": "./bin/xp-cli.sh"
+    "coda": "./bin/coda.sh"
   },
   "scripts": {
     "build": "tsc",

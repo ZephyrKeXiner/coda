@@ -6,7 +6,7 @@ import { execSync } from "node:child_process";
 import { Read, Ls, Write, Grep, Edit } from "./tools.js";
 import { toolDefinition } from "./def.js";
 import { isDangerous, estimateTokens, trimMessages } from "./utils.js";
-import { loadMessages, saveMessages } from "./memory.js";
+import { loadMessages, saveMessages, listSessions } from "./memory.js";
 
 // ─── Configuration ──────────────────────────────────────────────────
 dotenv.config({ path: ".env.local" });
@@ -288,7 +288,7 @@ export async function runAgent(
 }
 
 // ─── Slash commands ─────────────────────────────────────────────────
-function handleSlashCommand(input: string): boolean {
+async function handleSlashCommand(input: string): Promise<boolean> {
   const trimmed = input.trim();
   if (trimmed === "/clear") {
     messages.length = 1;
@@ -303,13 +303,18 @@ function handleSlashCommand(input: string): boolean {
     console.log(`${colors.info}Current model: ${MODEL}${colors.reset}`);
     return true;
   }
+  if (trimmed === "/resume") {
+    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] =
+      await loadMessages(session_id);
+  }
   if (trimmed === "/help") {
     console.log(`${colors.info}Available commands:
   /clear   - Clear conversation history
   /tokens  - Show token usage statistics
   /model   - Show current model
   /help    - Show this help message
-  /exit    - Exit the program${colors.reset}`);
+  /exit    - Exit the program${colors.reset}
+  /resume  - resume the session`);
     return true;
   }
   if (trimmed === "/exit" || trimmed === "/quit") {
@@ -322,7 +327,7 @@ function handleSlashCommand(input: string): boolean {
 
 // ─── Graceful shutdown ──────────────────────────────────────────────
 function gracefulShutdown() {
-  saveMessages(messages);
+  saveMessages(messages, session_id);
   console.log(`\n${colors.info}Interrupted.${colors.reset}`);
   printUsageStats();
   process.exit(0);
@@ -332,23 +337,41 @@ process.on("SIGINT", gracefulShutdown);
 rl.on("close", gracefulShutdown);
 rl.on("SIGINT", gracefulShutdown);
 
+// ─── Session selection ─────────────────────────────────────────────
+async function selectSession(): Promise<string> {
+  const sessions = listSessions();
+  if (sessions.length === 0) return crypto.randomUUID();
+
+  console.log(`\n${colors.info}  0) New session${colors.reset}`);
+  sessions.forEach((s, i) => {
+    console.log(`${colors.info}  ${i + 1}) ${s}${colors.reset}`);
+  });
+
+  const answer = await ask(`\n${colors.prompt}Select session: ${colors.reset}`);
+  const idx = parseInt(answer);
+
+  if (isNaN(idx) || idx === 0) return crypto.randomUUID();
+  if (idx >= 1 && idx <= sessions.length) return sessions[idx - 1];
+  return crypto.randomUUID();
+}
+
 // ─── Main loop ──────────────────────────────────────────────────────
-console.log(
-  `${colors.info}xp-cli coding agent (model: ${MODEL})${colors.reset}`,
-);
+console.log(`${colors.info}Coda coding agent (model: ${MODEL})${colors.reset}`);
 console.log(
   `${colors.info}Type /help for available commands.${colors.reset}\n`,
 );
 
+const session_id = await selectSession();
 const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] =
-  await loadMessages();
+  await loadMessages(session_id);
+console.log(`${colors.success}Session: ${session_id}${colors.reset}\n`);
 
 while (true) {
   const prompt = await ask(`${colors.prompt}> ${colors.reset}`);
 
   if (!prompt.trim()) continue;
   if (prompt.trim().startsWith("/")) {
-    if (handleSlashCommand(prompt)) continue;
+    if (await handleSlashCommand(prompt)) continue;
   }
 
   messages.push({ role: "user", content: prompt });
