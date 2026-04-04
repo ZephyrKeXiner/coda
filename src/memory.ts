@@ -27,6 +27,7 @@ export function listSessions(): string[] {
     .map((f) => f.replace(".json", ""));
 }
 
+// ─── RAG FUNCTION (TODO) ──────────────────────────────────────────────────
 export async function saveIndex(prompt: string) {
   const textSplitter = new TextSplitter({ chunkSize: 400, chunkOverlap: 50 });
   const index = new LocalIndex(path.join(process.cwd(), "my-index"));
