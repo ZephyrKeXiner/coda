@@ -40,7 +40,7 @@ export class McpClient {
     });
     this.process.stdin!.write(
       JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }) +
-        "\n",
+      "\n",
     );
   }
 

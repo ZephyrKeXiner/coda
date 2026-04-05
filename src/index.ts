@@ -7,9 +7,36 @@ import { Read, Ls, Write, Grep, Edit } from "./tools.js";
 import { toolDefinition } from "./def.js";
 import { isDangerous, estimateTokens, trimMessages } from "./utils.js";
 import { loadMessages, saveMessages, listSessions } from "./memory.js";
+import { readFileSync } from "node:fs";
+import { McpClient } from "./mcpClient.js";
 
 // ─── Configuration ──────────────────────────────────────────────────
 dotenv.config({ path: ".env.local" });
+
+console.log();
+
+const mcpConfig = JSON.parse(readFileSync("mcp.json", "utf-8"));
+const mcpClients = new Map<string, McpClient>();
+
+for (const [name, config] of Object.entries(mcpConfig.mcpServers)) {
+  const [command, args] = config as any;
+  const client = new McpClient(command, args);
+  await client.connect();
+  const tools = await client.listTools();
+
+  for (const tool of tools) {
+    toolDefinition.push({
+      type: "function",
+      function: {
+        name: `mcp_${name}_${tool.name}`,
+        description: tool.description,
+        parameters: tool.inputSchema,
+      },
+    });
+  }
+
+  mcpClients.set(name, client);
+}
 
 const MODEL = process.env.MODEL || "anthropic/claude-opus-4.6";
 const MAX_CONTEXT_TOKENS = parseInt(
