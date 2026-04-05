@@ -78,7 +78,7 @@ const openai = new OpenAI({
 });
 
 // ─── Token usage tracking ───────────────────────────────────────────
-let totalTokensUsed = { prompt: 0, completion: 0, total: 0 };
+const totalTokensUsed = { prompt: 0, completion: 0, total: 0 };
 
 // ─── Helpers ────────────────────────────────────────────────────────
 function ask(prompt: string): Promise<string> {
@@ -203,7 +203,7 @@ export async function runAgent(
       });
 
       let fullContext = "";
-      let toolCallUse: any[] = [];
+      const toolCallUse: any[] = [];
       let finishReason = "";
       let lastPromptTokens = 0;
 

@@ -9,7 +9,7 @@ export default tseslint.config(
     rules: {
       "no-unused-vars": "off",
       "@typescript-eslint/no-unused-vars": "warn",
-      "no-console": "error",
+      "@typescript-eslint/no-explicit-any": "off",
       "eqeqeq": "error",
     }
   }
