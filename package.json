@@ -1,6 +1,6 @@
 {
   "name": "coda",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A CLI-based AI coding agent powered by OpenRouter, with file manipulation and bash execution tools",
   "main": "dist/index.js",
   "bin": {
