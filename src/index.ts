@@ -9,6 +9,7 @@ import { isDangerous, estimateTokens, trimMessages } from "./utils.js";
 import { loadMessages, saveMessages, listSessions } from "./memory.js";
 import { readFileSync } from "node:fs";
 import { McpClient } from "./mcpClient.js";
+import { error } from "node:console";
 
 // ─── Configuration ──────────────────────────────────────────────────
 dotenv.config({ path: ".env.local" });
@@ -19,7 +20,7 @@ const mcpConfig = JSON.parse(readFileSync("mcp.json", "utf-8"));
 const mcpClients = new Map<string, McpClient>();
 
 for (const [name, config] of Object.entries(mcpConfig.mcpServers)) {
-  const [command, args] = config as any;
+  const { command, args } = config as any;
   const client = new McpClient(command, args);
   await client.connect();
   const tools = await client.listTools();
@@ -45,8 +46,6 @@ const MAX_CONTEXT_TOKENS = parseInt(
 );
 const BASH_TIMEOUT = parseInt(process.env.BASH_TIMEOUT || "30000", 10);
 const MAX_DEPTH = 3;
-
-// DANGEROUS_PATTERNS and isDangerous imported from utils.ts
 
 // ─── Readline / Colors ─────────────────────────────────────────────
 const rl = readline.createInterface({
@@ -261,15 +260,28 @@ export async function runAgent(
             .filter((call) => call.type === "function")
             .map(async (call) => {
               try {
-                const handler = toolHandlers[call.function.name];
-                console.log(
-                  `${colors.tool}[tool] ${call.function.name}${colors.reset}`,
-                );
-                if (!handler)
-                  throw new Error(`Unknown tool: ${call.function.name}`);
-
                 const args = JSON.parse(call.function.arguments);
-                const result = await handler(args);
+                let result: string;
+
+                if (call.function.name.startsWith("mcp")) {
+                  const parts = call.function.name.split("_");
+                  const serverName = parts[1];
+                  const toolName = parts.slice(2).join("_");
+                  const client = mcpClients.get(serverName);
+                  if (!client)
+                    throw new Error(`MCP server not found: ${serverName}`);
+                  const mcpResult = await client.callTool(toolName, args);
+                  result = JSON.stringify(mcpResult);
+                } else {
+                  const handler = toolHandlers[call.function.name];
+                  console.log(
+                    `${colors.tool}[tool] ${call.function.name}${colors.reset}`,
+                  );
+                  if (!handler)
+                    throw new Error(`Unknown tool: ${call.function.name}`);
+                  result = await handler(args);
+                }
+
                 return {
                   role: "tool" as const,
                   tool_call_id: call.id,
