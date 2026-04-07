@@ -1,4 +1,4 @@
-# xp-cli
+# Coda
 
 Terminal AI coding agent. Powered by [OpenRouter](https://openrouter.ai/), default model Claude Opus 4.6.
 
@@ -28,6 +28,7 @@ npm run dev
 - **Memory** - conversation history persisted to JSON, auto-saved on exit (Ctrl+C)
 - **Streaming** - real-time streamed responses
 - **Token management** - usage tracking and automatic context trimming
+- **MCP** - Model Context Protocol client for connecting external tool servers
 - **Security** - path traversal protection, dangerous command patterns
 
 ## Usage
@@ -41,7 +42,7 @@ npm run build && npm start
 
 # Global CLI
 npm link
-xp-cli
+coda
 ```
 
 ## Commands
@@ -51,6 +52,7 @@ xp-cli
 | `/clear`  | Clear conversation   |
 | `/tokens` | Show token usage     |
 | `/model`  | Show current model   |
+| `/resume` | Resume session       |
 | `/help`   | Show help            |
 | `/exit`   | Exit                 |
 
@@ -81,15 +83,25 @@ xp-cli
 
 ```
 src/
-  index.ts    - Main loop, agent core, slash commands
-  tools.ts    - File operation tools (read, write, edit, grep, ls)
-  def.ts      - Tool definitions for OpenAI function calling
-  utils.ts    - Helpers (isDangerous, token estimation, trimMessages)
-  memory.ts   - Conversation persistence and vector index (vectra)
-  sandbox.ts  - E2B cloud sandbox integration
-  test.ts     - Test suite
+  index.ts              - Main loop, agent core, slash commands
+  types/
+    def.ts              - Tool definitions for OpenAI function calling
+  tools/
+    fileSystem.ts       - File operation tools (read, write, edit, grep, ls)
+    safety.ts           - Dangerous command detection patterns
+  utils/
+    tokens.ts           - Token estimation and context trimming
+  memory/
+    session.ts          - Conversation persistence and vector index (vectra)
+  mcp/
+    client.ts           - MCP client (JSON-RPC over stdio)
+    server.ts           - MCP server skeleton
+  sandbox/
+    e2b.ts              - E2B cloud sandbox integration
+  __tests__/
+    test.ts             - Test suite
 bin/
-  xp-cli.sh   - CLI entry point
+  coda.sh               - CLI entry point
 ```
 
 ## Testing
