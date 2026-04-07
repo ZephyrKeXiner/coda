@@ -4,7 +4,7 @@ import OpenAI from "openai";
 import { readFile } from "node:fs/promises";
 import { existsSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 
-const MEMORY_DIR = new URL("../memory/", import.meta.url).pathname;
+const MEMORY_DIR = new URL("../../memory/", import.meta.url).pathname;
 
 export function saveMessages(messages: any[], session: string) {
   mkdirSync(MEMORY_DIR, { recursive: true });

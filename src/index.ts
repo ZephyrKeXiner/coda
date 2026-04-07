@@ -3,18 +3,15 @@ import dotenv from "dotenv";
 import OpenAI from "openai";
 import * as readline from "readline";
 import { execSync } from "node:child_process";
-import { Read, Ls, Write, Grep, Edit } from "./tools.js";
-import { toolDefinition } from "./def.js";
-import { isDangerous, estimateTokens, trimMessages } from "./utils.js";
-import { loadMessages, saveMessages, listSessions } from "./memory.js";
+import { Read, Ls, Write, Grep, Edit } from "./tools/fileSystem.js";
+import { toolDefinition } from "./types/def.js";
+import { isDangerous } from "./tools/safety.js";
+import { trimMessages } from "./utils/tokens.js";
+import { loadMessages, saveMessages, listSessions } from "./memory/session.js";
 import { readFileSync } from "node:fs";
-import { McpClient } from "./mcpClient.js";
-import { error } from "node:console";
-
+import { McpClient } from "./mcp/client.js";
 // ─── Configuration ──────────────────────────────────────────────────
 dotenv.config({ path: ".env.local" });
-
-console.log();
 
 const mcpConfig = JSON.parse(readFileSync("mcp.json", "utf-8"));
 const mcpClients = new Map<string, McpClient>();

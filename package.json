@@ -10,7 +10,7 @@
     "build": "tsc",
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
-    "test": "tsx src/test.ts"
+    "test": "tsx src/__tests__/test.ts"
   },
   "keywords": [
     "ai",

@@ -2,9 +2,10 @@ import { describe, it, before, after } from "node:test";
 import assert from "node:assert";
 import path from "path";
 import fs from "fs";
-import { isDangerous, estimateTokens, trimMessages } from "./utils.js";
-import { Read, Ls, Write, Grep, Edit, safePath } from "./tools.js";
-import { saveMessages, loadMessages, listSessions } from "./memory.js";
+import { isDangerous } from "../tools/safety.js";
+import { estimateTokens, trimMessages } from "../utils/tokens.js";
+import { Read, Ls, Write, Grep, Edit, safePath } from "../tools/fileSystem.js";
+import { saveMessages, loadMessages, listSessions } from "../memory/session.js";
 
 // ─── Test fixtures ─────────────────────────────────────────────────
 const TEST_DIR = path.join(process.cwd(), "__test_tmp__");
