@@ -1,3 +1,4 @@
+import { CommandExitError } from "e2b";
 import OpenAI from "openai";
 
 export const toolDefinition: OpenAI.Chat.Completions.ChatCompletionTool[] = [
@@ -141,6 +142,23 @@ export const toolDefinition: OpenAI.Chat.Completions.ChatCompletionTool[] = [
           },
         },
         required: ["systemprompt", "prompt"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "sandbox",
+      description: "Launch a remote sandbox for dangerous action.",
+      parameters: {
+        type: "object",
+        properties: {
+          command: {
+            type: "string",
+            description: "The commmand that you want to execute in the sandbox",
+          },
+        },
+        required: ["command"],
       },
     },
   },

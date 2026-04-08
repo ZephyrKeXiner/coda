@@ -4,12 +4,13 @@ import OpenAI from "openai";
 import * as readline from "readline";
 import { execSync } from "node:child_process";
 import { Read, Ls, Write, Grep, Edit } from "./tools/fileSystem.js";
-import { toolDefinition } from "./types/def.js";
+import { toolDefinition } from "./types/tool_def.js";
 import { isDangerous } from "./tools/safety.js";
 import { trimMessages } from "./utils/tokens.js";
 import { loadMessages, saveMessages, listSessions } from "./memory/session.js";
 import { readFileSync } from "node:fs";
 import { McpClient } from "./mcp/client.js";
+import { E2BSandbox, killSandbox } from "./sandbox/e2b.js";
 // ─── Configuration ──────────────────────────────────────────────────
 dotenv.config({ path: ".env.local" });
 
@@ -139,6 +140,9 @@ const baseToolHandlers: Record<
   },
   edit_file: async (args) => {
     return await Edit(args.file_path, args.old_string, args.new_string);
+  },
+  sandbox: async (args) => {
+    return await E2BSandbox(args.command);
   },
 };
 
@@ -362,8 +366,9 @@ async function handleSlashCommand(input: string): Promise<boolean> {
 }
 
 // ─── Graceful shutdown ──────────────────────────────────────────────
-function gracefulShutdown() {
+async function gracefulShutdown() {
   saveMessages(messages, session_id);
+  await killSandbox();
   console.log(`\n${colors.info}Interrupted.${colors.reset}`);
   printUsageStats();
   process.exit(0);
