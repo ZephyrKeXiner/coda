@@ -2,7 +2,7 @@
 import dotenv from "dotenv";
 import OpenAI from "openai";
 import * as readline from "readline";
-import { execSync } from "node:child_process";
+import { exec, execSync } from "node:child_process";
 import { Read, Ls, Write, Grep, Edit } from "./tools/fileSystem.js";
 import { toolDefinition } from "./types/tool_def.js";
 import { isDangerous } from "./tools/safety.js";
@@ -11,6 +11,9 @@ import { loadMessages, saveMessages, listSessions } from "./memory/session.js";
 import { readFileSync } from "node:fs";
 import { McpClient } from "./mcp/client.js";
 import { E2BSandbox, killSandbox } from "./sandbox/e2b.js";
+import { promisify } from "node:util";
+
+const execPromise = promisify(exec);
 // ─── Configuration ──────────────────────────────────────────────────
 dotenv.config({ path: ".env.local" });
 
@@ -116,11 +119,12 @@ const baseToolHandlers: Record<
       }
     }
     try {
-      return execSync(cmd, {
+      const { stdout, stderr } = await execPromise(cmd, {
         encoding: "utf-8",
         timeout: BASH_TIMEOUT,
         cwd: process.cwd(),
       });
+      return stdout + (stderr ? `\nstderr: ${stderr}` : "");
     } catch (e: any) {
       return `Exit code: ${e.status ?? "unknown"}\n${e.stderr || e.message}`;
     }
