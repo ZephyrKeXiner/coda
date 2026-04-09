@@ -410,8 +410,10 @@ const session_id = await selectSession();
 const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] =
   await loadMessages(session_id);
 
-// 确保 system prompt 在 messages 最前面
-if (messages.length === 0 || messages[0].role !== "system") {
+// 总是用最新的 system prompt
+if (messages.length > 0 && messages[0].role === "system") {
+  messages[0] = { role: "system", content: systemPrompt };
+} else {
   messages.unshift({ role: "system", content: systemPrompt });
 }
 
