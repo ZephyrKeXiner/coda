@@ -409,6 +409,12 @@ console.log(
 const session_id = await selectSession();
 const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] =
   await loadMessages(session_id);
+
+// 确保 system prompt 在 messages 最前面
+if (messages.length === 0 || messages[0].role !== "system") {
+  messages.unshift({ role: "system", content: systemPrompt });
+}
+
 console.log(`${colors.success}Session: ${session_id}${colors.reset}\n`);
 
 while (true) {
